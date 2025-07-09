@@ -1,0 +1,45 @@
+basePath: /api
+host: localhost:8080
+info:
+  contact:
+    email: you@example.com
+    name: Your Name
+  description: Upload & convert files asynchronously via Asynq queue.
+  title: File Converter API
+  version: "1.0"
+paths:
+  /status/{job_id}:
+    get:
+      parameters:
+      - description: Job ID
+        in: path
+        name: job_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get job status
+  /upload:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: File to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Upload file and enqueue converting job
+swagger: "2.0"

@@ -1,0 +1,11 @@
+basePath: /api
+host: localhost:8080
+info:
+  contact:
+    email: you@example.com
+    name: Your Name
+  description: Upload & convert files asynchronously via Asynq queue.
+  title: File Converter API
+  version: "1.0"
+paths: {}
+swagger: "2.0"
