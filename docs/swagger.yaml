@@ -1,13 +1,31 @@
 basePath: /api
-host: localhost:8080
+host: 127.0.0.1:8080
 info:
   contact:
-    email: you@example.com
-    name: Your Name
+    email: phammanhtoanhht933@gmail.com
+    name: minht
   description: Upload & convert files asynchronously via Asynq queue.
   title: File Converter API
   version: "1.0"
 paths:
+  /convert/html_pdf:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: HTML file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/pdf
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      summary: Convert HTML to PDF
   /status/{job_id}:
     get:
       parameters:
@@ -42,4 +60,6 @@ paths:
               type: string
             type: object
       summary: Upload file and enqueue converting job
+schemes:
+- https
 swagger: "2.0"

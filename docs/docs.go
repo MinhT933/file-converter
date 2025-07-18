@@ -10,14 +10,42 @@ const docTemplate = `{
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
         "contact": {
-            "name": "Your Name",
-            "email": "you@example.com"
+            "name": "minht",
+            "email": "phammanhtoanhht933@gmail.com"
         },
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/convert/html_pdf": {
+            "post": {
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/pdf"
+                ],
+                "summary": "Convert HTML to PDF",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "HTML file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    }
+                }
+            }
+        },
         "/status/{job_id}": {
             "get": {
                 "summary": "Get job status",
@@ -77,9 +105,9 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8080",
+	Host:             "127.0.0.1:8080",
 	BasePath:         "/api",
-	Schemes:          []string{},
+	Schemes:          []string{"https"},
 	Title:            "File Converter API",
 	Description:      "Upload & convert files asynchronously via Asynq queue.",
 	InfoInstanceName: "swagger",

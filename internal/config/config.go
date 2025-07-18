@@ -1,36 +1,59 @@
 package config
 
 import (
-	"os"
-	"strconv"
+    "os"
+    "strconv"
 
-	"github.com/joho/godotenv"
+    "github.com/joho/godotenv"
 )
 
 type Config struct {
-	AppName     string
-	PortHTTP    string
-	RedisAddr   string
-	RedisPass   string
-	MaxUploadMB int
+    AppName     string
+    PortHTTP    string
+    RedisAddr   string
+    RedisPass   string
+    MaxUploadMB int
+    SMTPHost    string
+    SMTPPort    int
+    SMTPUser    string
+    SMTPPass    string
+    EmailFrom   string
+}
+
+// getEnv đọc biến môi trường, nếu không có thì trả về fallback
+func getEnv(key, fallback string) string {
+    if v, ok := os.LookupEnv(key); ok {
+        return v
+    }
+    return fallback
 }
 
 func Load() *Config {
-	_ = godotenv.Load()
+    // load file .env nếu có
+    _ = godotenv.Load()
 
-	mb, _ := strconv.Atoi(getEnv("MAX_UPLOAD_MB", "10"))
-	return &Config{
-		AppName:     getEnv("APP_NAME", "converter"),
-		PortHTTP:    getEnv("PORT_HTTP", "8080"),
-		RedisAddr:   getEnv("REDIS_ADDR", "localhost:6379"),
-		RedisPass:   os.Getenv("REDIS_PASSWORD"),
-		MaxUploadMB: mb,
-	}
-}
+    // parse MAX_UPLOAD_MB
+    mb, err := strconv.Atoi(getEnv("MAX_UPLOAD_MB", "10"))
+    if err != nil {
+        mb = 10
+    }
 
-func getEnv(k, d string) string {
-	if v := os.Getenv(k); v != "" {
-		return v
-	}
-	return d
+    // parse SMTP_PORT
+    smtpPort, err := strconv.Atoi(getEnv("SMTP_PORT", "25"))
+    if err != nil {
+        smtpPort = 25
+    }
+
+    return &Config{
+        AppName:     getEnv("APP_NAME", "converter"),
+        PortHTTP:    getEnv("PORT_HTTP", "8080"),
+        RedisAddr:   getEnv("REDIS_ADDR", "localhost:6379"),
+        RedisPass:   os.Getenv("REDIS_PASSWORD"), // nếu muốn default thì dùng getEnv
+        MaxUploadMB: mb,
+        SMTPHost:    getEnv("SMTP_HOST", ""),
+        SMTPPort:    smtpPort,
+        SMTPUser:    getEnv("SMTP_USER", ""),
+        SMTPPass:    getEnv("SMTP_PASS", ""),
+        EmailFrom:   getEnv("EMAIL_FROM", ""),
+    }
 }

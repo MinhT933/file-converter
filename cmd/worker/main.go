@@ -1,24 +1,94 @@
 package main
 
 import (
-	"github.com/MinhT933/file-converter/internal/config"
-	"github.com/MinhT933/file-converter/internal/tasks"
-	wk "github.com/MinhT933/file-converter/internal/worker"
-	"github.com/hibiken/asynq"
+    "context"
+    "encoding/json"
+    "log"
+    "path/filepath"
+
+    "github.com/hibiken/asynq"
+    "github.com/joho/godotenv"
+
+    "github.com/MinhT933/file-converter/internal/config"
+    "github.com/MinhT933/file-converter/internal/tasks"
+    "github.com/MinhT933/file-converter/internal/service/email"
+    "github.com/MinhT933/file-converter/internal/converter"
 )
 
 func main() {
-	cfg := config.Load()
+    godotenv.Load()
+    cfg := config.Load()
 
-	srv := asynq.NewServer(
-		asynq.RedisClientOpt{Addr: cfg.RedisAddr, Password: cfg.RedisPass},
-		asynq.Config{Concurrency: 4},
-	)
+   
+    // client để enqueue tiếp email task
+    client := asynq.NewClient(asynq.RedisClientOpt{
+        Addr:     cfg.RedisAddr,
+        Password: cfg.RedisPass,
+    })
 
-	mux := asynq.NewServeMux()
-	mux.HandleFunc(tasks.TypeConvert, wk.ConvertHandler())
+    defer client.Close()
 
-	if err := srv.Run(mux); err != nil {
-		panic(err)
-	}
+    srv := asynq.NewServer(
+        asynq.RedisClientOpt{Addr: cfg.RedisAddr, Password: cfg.RedisPass},
+        asynq.Config{Concurrency: 10, Queues: map[string]int{"default": 10}},
+    )
+
+    emailSvc := email.NewService(
+        cfg.SMTPHost, cfg.SMTPPort,
+        cfg.SMTPUser, cfg.SMTPPass,
+        cfg.EmailFrom,
+    )
+
+    mux := asynq.NewServeMux()
+
+    // Handler cho file:convert
+    mux.HandleFunc(tasks.TypeConvertFile, func(ctx context.Context, t *asynq.Task) error {
+        var p struct {
+            Email      string `json:"email"`
+            InputPath  string `json:"input_path"`
+            OutputPath string `json:"output_path"`
+        }
+        if err := json.Unmarshal(t.Payload(), &p); err != nil {
+            return err
+        }
+
+        // 1) Thực hiện convert (ví dụ HTML→PDF, DOCX→PDF,…)
+        if err := converter.ConvertFile(p.InputPath, p.OutputPath); err != nil {
+            return err
+        }
+        
+
+        // 2) Tạo link download
+        downloadURL := "https://127.0.0.1:8080/downloads/" + filepath.Base(p.OutputPath)
+
+        // 3) Enqueue task gửi email
+        emailPayload, _ := json.Marshal(map[string]string{
+            "email":    p.Email,
+            "file_url": downloadURL,
+        })
+
+        _, err := client.Enqueue(asynq.NewTask(tasks.TypeEmailNotify, emailPayload))
+        return err
+
+    })
+
+    // Handler cho email:notify
+    mux.HandleFunc(tasks.TypeEmailNotify, func(ctx context.Context, t *asynq.Task) error {
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
+        var p struct {
+            Email   string `json:"email"`
+            FileURL string `json:"file_url"`
+        }
+        if err := json.Unmarshal(t.Payload(), &p); err != nil {
+            return err
+        }
+        return emailSvc.SendConversionEmail(p.Email, p.FileURL)
+    })
+
+    if err := srv.Run(mux); err != nil {
+        log.Fatalf("asynq server error: %v", err)
+    }
 }
