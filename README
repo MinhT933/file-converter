@@ -1,0 +1,131 @@
+# 🧠 Golang Service - Server & Worker
+
+This is a monorepo Go service with two main components:
+
+- 🌐 `cmd/server`: the HTTP/WebSocket server
+- ⚙️ `cmd/worker`: the background job processor (e.g., consuming from queue)
+
+---
+
+## 🚀 Quick Start
+
+### 1. Clone this repo
+
+```bash
+git clone https://github.com/yourname/your-repo.git
+cd your-repo
+```
+
+### 2. Install Go dependencies
+
+```bash
+go mod tidy
+```
+
+---
+
+## 🛠️ Run Locally
+
+### 👉 Run Server
+
+```bash
+make run-server
+```
+
+Runs `cmd/server/main.go`
+
+### 👉 Run Worker
+
+```bash
+make run-worker
+```
+
+Runs `cmd/worker/main.go`
+
+---
+
+## 🧱 Build Binaries
+
+Build static binaries into `./bin`:
+
+```bash
+make build-server
+make build-worker
+```
+
+You can run them with:
+
+```bash
+./bin/server
+./bin/worker
+```
+
+---
+
+## 🧹 Clean Build Artifacts
+
+```bash
+make clean
+```
+
+---
+
+## 🐳 Run with Docker (Optional)
+
+If you use Docker, just run:
+
+```bash
+docker-compose up --build
+```
+
+Or for detached mode:
+
+```bash
+docker-compose up -d --build
+```
+
+---
+
+## 📁 Project Structure
+
+```
+.
+├── cmd/
+│   ├── server/             # Main API / WebSocket Server
+│   │   └── main.go
+│   └── worker/             # Background Job Processor
+│       └── main.go
+├── internal/               # Business logic, services, core packages
+├── docs/                   # Documentation / OpenAPI / Architecture
+├── Makefile                # Dev helper commands
+├── docker-compose.yml      # Optional Docker support
+├── go.mod / go.sum         # Go modules
+└── README.md               # You're here!
+```
+
+---
+
+## 📌 Requirements
+
+- Go 1.20+
+- (Optional) Docker & Docker Compose
+
+---
+
+## 🧪 Running Tests
+
+```bash
+go test ./...
+```
+
+---
+
+## ✍️ Author
+
+Created by [Your Name](https://github.com/yourname) — feel free to contribute or reach out!
+
+---
+
+## 📝 License
+
+MIT License. See `LICENSE` file for details.

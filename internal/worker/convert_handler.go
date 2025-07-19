@@ -3,7 +3,6 @@ package worker
 import (
 	"context"
 	"encoding/json"
-
 	"github.com/hibiken/asynq"
 )
 
@@ -17,7 +16,7 @@ func ConvertHandler() asynq.HandlerFunc {
 		if err := json.Unmarshal(t.Payload(), &p); err != nil {
 			return err
 		}
-		// TODO: gọi converter thực tế
+
 		return nil
 	}
 }
