@@ -129,3 +129,18 @@ Created by [Your Name](https://github.com/yourname) — feel free to contribute 
 ## 📝 License
 
 MIT License. See `LICENSE` file for details.
+
+
+### 🔑 Certificate Generation (for HTTPS/TLS)
+
+- **Dev:**  
+  Tự động tạo certificate khi build image:
+  ```bash
+  docker build --build-arg GENERATE_CERT=true -t file-converter .
+  ```
+
+- **Prod:**  
+  Không tạo certificate, bạn nên mount file cert/key từ ngoài vào container:
+  ```bash
+  docker build --build-arg GENERATE_CERT=false -t file-converter .
+  ```
