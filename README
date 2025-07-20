@@ -1,98 +1,113 @@
-# 🧠 Golang Monorepo Service — Server & Worker
+# 🧠 Golang Service - Server & Worker
 
 ![Go Version](https://img.shields.io/badge/Go-1.20%2B-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Docker Support](https://img.shields.io/badge/Docker-Supported-blue)
 
-A monorepo Go service that includes:
+This is a monorepo Go service with two main components:
 
-- 🌐 `cmd/server`: the HTTP/WebSocket API server  
-- ⚙️ `cmd/worker`: the background job processor (e.g., message queue consumer)
+- 🌐 `cmd/server`: the HTTP/WebSocket server  
+- ⚙️ `cmd/worker`: the background job processor (e.g., consuming from queue)
 
 ---
 
 ## 📚 Table of Contents
 
 - [🚀 Quick Start](#-quick-start)
-- [🛠️ Running Locally](#️-running-locally)
-- [🧱 Building Binaries](#-building-binaries)
-- [🐳 Running with Docker](#-running-with-docker)
-- [🔑 Certificate Management (HTTPS/TLS)](#-certificate-management-httpstls)
+- [🛠️ Run Locally](#️-run-locally)
+- [🧱 Build Binaries](#-build-binaries)
+- [🐳 Run with Docker](#-run-with-docker-optional)
 - [🧪 Running Tests](#-running-tests)
 - [📁 Project Structure](#-project-structure)
+- [🔑 Certificate Generation (TLS)](#-certificate-generation-for-httpstls)
 - [📌 Requirements](#-requirements)
 - [✍️ Author](#-author)
 - [📝 License](#-license)
 
 ---
 
+
 ## 🚀 Quick Start
 
-### 1. Clone the Repository
+### 1. Clone this repo
 
 ```bash
 git clone https://github.com/yourname/your-repo.git
 cd your-repo
-2. Install Go Dependencies
-``bash
+```
+
+### 2. Install Go dependencies
+
+```bash
 go mod tidy
-🛠️ Running Locally
-Run the HTTP/WebSocket Server
-bash
+```
+
+---
+
+## 🛠️ Run Locally
+
+### 👉 Run Server
+
+```bash
 make run-server
-This runs cmd/server/main.go.
+```
 
-Run the Background Worker
-bash
+Runs `cmd/server/main.go`
+
+### 👉 Run Worker
+
+```bash
 make run-worker
-This runs cmd/worker/main.go.
+```
 
-🧱 Building Binaries
-To build static binaries into the ./bin directory:
+Runs `cmd/worker/main.go`
 
-bash
+---
+
+## 🧱 Build Binaries
+
+Build static binaries into `./bin`:
+
+```bash
 make build-server
 make build-worker
-To execute:
+```
 
-bash
+You can run them with:
+
+```bash
 ./bin/server
 ./bin/worker
-🔧 Clean up build artifacts:
-bash
+```
+
+---
+
+## 🧹 Clean Build Artifacts
+
+```bash
 make clean
-🐳 Running with Docker
-If you prefer Docker:
+```
 
-Run the API Server:
-bash
+---
+
+## 🐳 Run with Docker (Optional)
+
+If you use Docker, just run:
+
+### ▶️ Run app (server):
+
+```bash
 docker-compose run --service-ports app
-Run the Worker:
-bash
+
+### ⚙️ Run worker:
+
+
 docker-compose run --service-ports worker
-ℹ️ Make sure supporting services (e.g., Redis, Postgres) are already running with docker-compose up -d.
+---
 
-🔑 Certificate Management (HTTPS/TLS)
-Development (auto-generate certs inside image):
-bash
-docker build --build-arg GENERATE_CERT=true -t file-converter .
-Production (mount certs from host):
-bash
-docker build --build-arg GENERATE_CERT=false -t file-converter .
-Then run with:
+## 📁 Project Structure
 
-bash
-docker run -p 8080:8080 \
-  -v ${PWD}/127.0.0.1.pem:/app/127.0.0.1.pem \
-  -v ${PWD}/127.0.0.1-key.pem:/app/127.0.0.1-key.pem \
-  file-converter
-On Windows CMD, replace ${PWD} with %cd%.
-
-🧪 Running Tests
-bash
-go test ./...
-📁 Project Structure
-csharp
+```
 .
 ├── cmd/
 │   ├── server/             # Main API / WebSocket Server
@@ -100,15 +115,51 @@ csharp
 │   └── worker/             # Background Job Processor
 │       └── main.go
 ├── internal/               # Business logic, services, core packages
-├── docs/                   # Documentation, OpenAPI, diagrams
+├── docs/                   # Documentation / OpenAPI / Architecture
 ├── Makefile                # Dev helper commands
-├── docker-compose.yml      # Docker service orchestration
+├── docker-compose.yml      # Optional Docker support
 ├── go.mod / go.sum         # Go modules
-└── README.md               # This file
-📌 Requirements
-Go 1.20 or higher
+└── README.md               # You're here!
+```
 
-Docker & Docker Compose (optional but recommended)
+---
 
-✍️ Author
-Created by Your Name — contributions welcome!
+## 📌 Requirements
+
+- Go 1.20+
+- (Optional) Docker & Docker Compose
+
+---
+
+## 🧪 Running Tests
+
+```bash
+go test ./...
+```
+
+---
+
+## ✍️ Author
+
+Created by [MinhT933](https://github.com/MinhT933) — feel free to contribute or reach out!
+
+---
+
+## 📝 License
+
+MIT License. See `LICENSE` file for details.
+
+
+### 🔑 Certificate Generation (for HTTPS/TLS)
+
+- **Dev:**  
+  Tự động tạo certificate khi build image:
+  ```bash
+  docker build --build-arg GENERATE_CERT=true -t file-converter .
+  ```
+
+- **Prod:**  
+  Không tạo certificate, bạn nên mount file cert/key từ ngoài vào container:
+  ```bash
+  docker build --build-arg GENERATE_CERT=false -t file-converter .
+  ```
