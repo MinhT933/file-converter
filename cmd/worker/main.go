@@ -15,7 +15,8 @@ import (
     "github.com/MinhT933/file-converter/internal/converter"
 )
 
-func main() {
+func main() { 
+    log.Println("[DEBUG] Bắt đầu khởi động worker ✅")
     godotenv.Load()
     cfg := config.Load()
 
@@ -74,8 +75,10 @@ func main() {
 
     // Handler cho email:notify
     mux.HandleFunc(tasks.TypeEmailNotify, func(ctx context.Context, t *asynq.Task) error {
+    log.Printf("zô email notify")
 	defer func() {
 		if r := recover(); r != nil {
+            log.Printf("[ERROR] Panic trong xử lý task email:notify: %v", r)
 		}
 	}()
         var p struct {
@@ -83,6 +86,7 @@ func main() {
             FileURL string `json:"file_url"`
         }
         if err := json.Unmarshal(t.Payload(), &p); err != nil {
+            log.Printf("Error unmarshalling task payload: %v", err)
             return err
         }
         return emailSvc.SendConversionEmail(p.Email, p.FileURL)

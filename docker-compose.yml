@@ -1,10 +1,51 @@
 services:
   redis:
     image: redis:7
-    ports: ["6379:6379"] #????
-
-  nats:
-    image: nats:2 #???
     ports:
-      - "4222:4222" # client
-      - "8222:8222" # monitoring UI
+      - "6379:6379"
+    networks:
+      - mynetwork
+  
+  nats:
+    image: nats:2
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    networks:
+      - mynetwork
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      REDIS_ADDR: "redis:6379"
+    depends_on:
+      - redis
+      - nats
+    volumes:
+      - ./127.0.0.1.pem:/app/127.0.0.1.pem
+      - ./127.0.0.1-key.pem:/app/127.0.0.1-key.pem
+    networks:
+      - mynetwork
+  
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    env_file:
+      - .env
+    environment:
+      REDIS_ADDR: "redis:6379"
+    depends_on:
+      - redis
+      - nats
+    networks:
+      - mynetwork
+
+networks:
+  mynetwork:

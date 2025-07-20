@@ -69,7 +69,7 @@ func (h *Handler) ConvertHTMLPDF(c *fiber.Ctx) error {
 			log.Printf("payload", payload)
 			if err != nil {
 				// Không ảnh hưởng user, chỉ log lỗi để dev biết
-				log.Println("Gửi email báo thành công thất bại:", err.Error())
+				log.Println("Gửi email thất bại:", err.Error())
 			}
 		}()
 	}

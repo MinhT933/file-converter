@@ -16,6 +16,7 @@ func NewService(host string, port int, user, pass, from string) * Service {
 } 
 
 func (s *Service) SendConversionEmail(to, fileURL string) error {
+    log.Printf("email đã được gửi đi")
     m := gomail.NewMessage()
     m.SetHeader("From", s.from)
     m.SetHeader("To", to)
@@ -27,6 +28,7 @@ func (s *Service) SendConversionEmail(to, fileURL string) error {
     m.SetBody("text/plain", body)
   
     d := gomail.NewDialer(s.host, s.port, s.user, s.pass)
+
       err := d.DialAndSend(m)
     if err != nil {
         log.Printf("❌ Lỗi gửi email: %v", err)
@@ -34,6 +36,4 @@ func (s *Service) SendConversionEmail(to, fileURL string) error {
         log.Println("✅ Gửi email thành công!")
     }
     return err
-
-    return d.DialAndSend(m)
 }
