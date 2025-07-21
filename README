@@ -1,4 +1,4 @@
-# 🧠 Golang Service - Server & Worker
+🧠 Golang Service - Server & Worker 
 
 ![Go Version](https://img.shields.io/badge/Go-1.20%2B-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -90,9 +90,20 @@ make clean
 
 ---
 
+## 🐳 Buit with Docker (Optional)
+
+### ▶️ Build app (server):
+```bash
+docker-compose build --no-cache app
+
+### ▶️ Build work (server):
+``` bash 
+docker-compose build --no-cache worker
+
 ## 🐳 Run with Docker (Optional)
 
 If you use Docker, just run:
+
 
 ### ▶️ Run app (server):
 
@@ -101,9 +112,13 @@ docker-compose run --service-ports app
 
 ### ⚙️ Run worker:
 
-
 docker-compose run --service-ports worker
 ---
+
+###🔄 Hot-reload trong môi trường phát triển
+## Dự án hỗ trợ hot-reload khi phát triển với Docker:
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up app
 
 ## 📁 Project Structure
 
@@ -155,11 +170,11 @@ MIT License. See `LICENSE` file for details.
 - **Dev:**  
   Tự động tạo certificate khi build image:
   ```bash
-  docker build --build-arg GENERATE_CERT=true -t file-converter .
+     docker-compose build --no-cache --build-arg GENERATE_CERT=true app
   ```
 
 - **Prod:**  
   Không tạo certificate, bạn nên mount file cert/key từ ngoài vào container:
   ```bash
-  docker build --build-arg GENERATE_CERT=false -t file-converter .
+     docker-compose build --no-cache --build-arg GENERATE_CERT=false app
   ```
