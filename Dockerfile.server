@@ -1,30 +1,58 @@
 FROM golang:1.24-bullseye AS builder
-
 WORKDIR /app
-COPY go.mod ./
+
+# Go deps
+COPY go.mod .
 RUN go mod download
+
+# Copy toàn bộ source
 COPY . .
 
-# Build server and worker với tên khác nhau1
-RUN go build -o myapp-server ./cmd/server
+# Cài swag + build server
+RUN go install github.com/swaggo/swag/cmd/swag@latest
+RUN swag init -g cmd/server/main.go --parseInternal --parseDependency
+RUN CGO_ENABLED=0 GOOS=linux go build -o myapp-server ./cmd/server
 
+
+# ------------ RUNTIME STAGE ------------
 FROM debian:bullseye-slim AS server-runtime
 
+# ⓐ Package hệ điều hành bạn cần
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates wkhtmltopdf fontconfig fonts-dejavu xvfb libxrender1 libxext6 libjpeg62-turbo openssl && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates wkhtmltopdf fontconfig fonts-dejavu \
+        xvfb libxrender1 libxext6 openssl bash inotify-tools && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy server binary và các file cần thiết
 WORKDIR /app
-COPY --from=builder /app/myapp-server . 
-COPY .env .env
 
+# ⓑ Copy binary server
+COPY --from=builder /app/myapp-server .
+
+# ⓒ Copy **source code đủ** cho swag init
+COPY --from=builder /app/cmd /app/cmd
+COPY --from=builder /app/internal /app/internal
+COPY --from=builder /app/docs /app/docs
+
+# Thêm dòng này để copy go.mod
+COPY --from=builder /app/go.mod /app/go.mod
+
+# ⓓ Copy Go toolchain + swag
+COPY --from=builder /usr/local/go /usr/local/go
+COPY --from=builder /go/bin/swag /go/bin/swag
+ENV PATH="/usr/local/go/bin:/go/bin:${PATH}"
+
+# ⓔ File .env & script
+COPY .env .
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# (tùy) sinh cert test HTTPS
 ARG GENERATE_CERT=true
 RUN if [ "$GENERATE_CERT" = "true" ]; then \
-      openssl req -x509 -newkey rsa:4096 -keyout 127.0.0.1-key.pem -out 127.0.0.1.pem -days 365 -nodes -subj "/CN=127.0.0.1"; \
+      openssl req -x509 -newkey rsa:4096 -keyout 127.0.0.1-key.pem \
+        -out 127.0.0.1.pem -days 365 -nodes -subj "/CN=127.0.0.1"; \
     fi
 
 EXPOSE 8080
-CMD ["./myapp-server"]
-
-# (Tương tự, bạn có thể tạo stage cho worker)
+ENTRYPOINT ["/app/entrypoint.sh"]
