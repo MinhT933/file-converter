@@ -60,6 +60,7 @@ services:
       - ./go.sum:/app/go.sum
       - ./docs:/app/docs
       - ./entrypoint.sh:/app/entrypoint.sh
+      - ./firebase-creds.json:/app/firebase-creds.json:ro
     networks:
       - mynetwork
   
