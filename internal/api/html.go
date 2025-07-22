@@ -66,7 +66,6 @@ func (h *Handler) ConvertHTMLPDF(c *fiber.Ctx) error {
 				asynq.NewTask("email:notify", payload),
 				asynq.Queue("default"),
 			)
-			log.Printf("payload", payload)
 			if err != nil {
 				// Không ảnh hưởng user, chỉ log lỗi để dev biết
 				log.Println("Gửi email thất bại:", err.Error())
