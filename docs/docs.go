@@ -46,31 +46,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/status/{job_id}": {
-            "get": {
-                "summary": "Get job status",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Job ID",
-                        "name": "job_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/upload": {
             "post": {
                 "consumes": [
@@ -105,7 +80,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "127.0.0.1:8080",
+	Host:             "localhost:8080",
 	BasePath:         "/api",
 	Schemes:          []string{"https"},
 	Title:            "File Converter API",

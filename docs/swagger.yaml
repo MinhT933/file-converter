@@ -1,5 +1,5 @@
 basePath: /api
-host: 127.0.0.1:8080
+host: localhost:8080
 info:
   contact:
     email: phammanhtoanhht933@gmail.com
@@ -26,22 +26,6 @@ paths:
           schema:
             type: file
       summary: Convert HTML to PDF
-  /status/{job_id}:
-    get:
-      parameters:
-      - description: Job ID
-        in: path
-        name: job_id
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Get job status
   /upload:
     post:
       consumes:

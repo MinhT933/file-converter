@@ -12,7 +12,7 @@
         },
         "version": "1.0"
     },
-    "host": "127.0.0.1:8080",
+    "host": "localhost:8080",
     "basePath": "/api",
     "paths": {
         "/convert/html_pdf": {
@@ -38,31 +38,6 @@
                         "description": "OK",
                         "schema": {
                             "type": "file"
-                        }
-                    }
-                }
-            }
-        },
-        "/status/{job_id}": {
-            "get": {
-                "summary": "Get job status",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Job ID",
-                        "name": "job_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
                         }
                     }
                 }
