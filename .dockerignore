@@ -1,2 +1,4 @@
 .trunk
 .trunk/actions
+# firebase-creds.json
+firebase-creds.json
