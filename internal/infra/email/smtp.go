@@ -24,7 +24,7 @@ func NewSMTPProvider(host string, port int, user, pass, from string) *SMTPProvid
 	}
 }
 
-func (p *SMTPProvider) SendConversionEmail(ctx context.Context, to, subject, fileURL string) error {
+func (p *SMTPProvider) SendConversionEmail(ctx context.Context, to, fileURL string) error {
 	log.Printf("Đang gửi email đến: %s", to)
 	// m = mail
 	m := gomail.NewMessage()
