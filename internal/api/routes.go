@@ -2,18 +2,20 @@ package api
 
 import (
 	"github.com/MinhT933/file-converter/internal/config"
+	"github.com/MinhT933/file-converter/internal/infra/auth"
 	"github.com/gofiber/fiber/v2"
 	"github.com/hibiken/asynq"
 )
 
-func RegisterRoutes(app *fiber.App, cfg *config.Config, client *asynq.Client) {
-	h := &Handler{Cfg: cfg, AsynqClient: client}
+func RegisterRoutes(app *fiber.App, cfg *config.Config, client *asynq.Client, authProvider auth.Provider) {
+	h := &Handler{Cfg: cfg, AsynqClient: client, AuthProvider: authProvider}
 
 	v1 := app.Group("/api")
 	v1.Post("/upload", h.Upload)
 	// v1.Get("/status/:job_id", h.Status)
 
 	v1.Post("/convert/html_pdf", h.ConvertHTMLPDF)
+	v1.Post("/auth/social/login", h.SocialLogin)
 
 }
 
