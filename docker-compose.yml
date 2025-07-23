@@ -13,6 +13,24 @@ services:
       - "8222:8222"
     networks:
       - mynetwork
+    # ADD THIS: PostgreSQL service
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123
+      POSTGRES_DB: file_converter
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mynetwork
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d file_converter"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   app:
     build:
@@ -24,9 +42,15 @@ services:
       - .env
     environment:
       REDIS_ADDR: "redis:6379"
+      DB_HOST: "postgres"
+      DB_PORT: "5432"
+      DB_USER: "postgres"
+      DB_PASSWORD: "123"
+      DB_NAME: "file_converter"
     depends_on:
       - redis
       - nats
+      - postgres
     volumes:
       - ./127.0.0.1.pem:/app/127.0.0.1.pem
       - ./127.0.0.1-key.pem:/app/127.0.0.1-key.pem
@@ -35,7 +59,7 @@ services:
       - ./go.mod:/app/go.mod
       - ./go.sum:/app/go.sum
       - ./docs:/app/docs
-      - ./entrypoint.sh:/app/entrypoint.sh 
+      - ./entrypoint.sh:/app/entrypoint.sh
     networks:
       - mynetwork
   
@@ -47,11 +71,22 @@ services:
       - .env
     environment:
       REDIS_ADDR: "redis:6379"
+      DB_HOST: "postgres"          # ADD DB config for worker too
+      DB_PORT: "5432"
+      DB_USER: "postgres"
+      DB_PASSWORD: "123"
+      DB_NAME: "file_converter"
     depends_on:
       - redis
       - nats
+      - postgres
     networks:
       - mynetwork
 
 networks:
   mynetwork:
+
+# ADD THIS SECTION - Volume definitions
+volumes:
+  postgres_data:
+    driver: local
