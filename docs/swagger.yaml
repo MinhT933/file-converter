@@ -1,4 +1,64 @@
 basePath: /api
+definitions:
+  github_com_MinhT933_file-converter_internal_infra_auth.User:
+    properties:
+      created_at:
+        type: integer
+      custom_claims:
+        additionalProperties: true
+        type: object
+      disabled:
+        type: boolean
+      display_name:
+        type: string
+      email:
+        type: string
+      email_verified:
+        type: boolean
+      last_login_at:
+        type: integer
+      phone_number:
+        type: string
+      photo_url:
+        type: string
+      uid:
+        type: string
+    type: object
+  internal_api.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  internal_api.LoginResponse:
+    properties:
+      message:
+        type: string
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/github_com_MinhT933_file-converter_internal_infra_auth.User'
+    type: object
+  internal_api.SocialLoginRequest:
+    properties:
+      access_token:
+        description: Token từ provider
+        type: string
+      id_token:
+        description: ID token (cho Google)
+        type: string
+      provider:
+        description: '"google", "facebook", "linkedin"'
+        type: string
+    required:
+    - access_token
+    - provider
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -8,6 +68,101 @@ info:
   title: File Converter API
   version: "1.0"
 paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Login user with email and password
+      parameters:
+      - description: Login request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api.LoginRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_api.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login with email and password
+      tags:
+      - auth
+  /auth/social/login:
+    post:
+      consumes:
+      - application/json
+      description: Login user with social provider (Google, Facebook, etc.)
+      parameters:
+      - description: Social login request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api.SocialLoginRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_api.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login with social providers (Google, Facebook, LinkedIn)
+      tags:
+      - auth
+  /auth/verify:
+    get:
+      consumes:
+      - application/json
+      description: Verify JWT token and return user information
+      parameters:
+      - description: JWT token
+        in: query
+        name: token
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_MinhT933_file-converter_internal_infra_auth.User'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Verify JWT token
+      tags:
+      - auth
   /convert/html_pdf:
     post:
       consumes:
@@ -26,24 +181,6 @@ paths:
           schema:
             type: file
       summary: Convert HTML to PDF
-  /upload:
-    post:
-      consumes:
-      - multipart/form-data
-      parameters:
-      - description: File to upload
-        in: formData
-        name: file
-        required: true
-        type: file
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Upload file and enqueue converting job
 schemes:
 - https
 swagger: "2.0"

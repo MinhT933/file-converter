@@ -1,3 +1,7 @@
 .env
 
 *.pem
+
+key-firebase.json
+
+firebase-creds.json

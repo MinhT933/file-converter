@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Google Login API</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .response {
+            background: #fff;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+            margin-top: 10px;
+        }
+        .error {
+            border-left-color: #dc3545;
+        }
+        .success {
+            border-left-color: #28a745;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+    <script type="module">
+   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, signInWithPopup, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Firebase config từ .env
+ const firebaseConfig = {
+  apiKey: "AIzaSyAIhAkoNYrMyoMfg___ts5lxM3ufo6cbxI",
+  authDomain: "convert-file-dbd1c.firebaseapp.com",
+  projectId: "convert-file-dbd1c",
+  storageBucket: "convert-file-dbd1c.firebasestorage.app",
+  messagingSenderId: "626340110675",
+  appId: "1:626340110675:web:0675b4710bf2f6a64281a6",
+  measurementId: "G-PL2XMGEQ8Y"
+};
+
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth();
+        const provider = new GoogleAuthProvider();
+
+ window.signInWithGoogle = async function() {
+    const resultDiv = document.getElementById('result');
+    
+    try {
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `
+            <h4>⏳ Signing in with Firebase...</h4>
+        `;
+        
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+        
+        // Get both tokens
+        const idToken = await user.getIdToken();
+        const accessToken = result._tokenResponse?.oauthAccessToken || '';
+        
+        console.log('🎉 Firebase Auth Success:', user);
+        console.log('🔑 ID Token:', idToken);
+        console.log('🔑 Access Token:', accessToken);
+        console.log('UID:', user.uid);
+        
+        // 🎯 AUTO-FILL INPUT FIELDS
+        document.getElementById('access_token').value = accessToken || 'Not available';
+        document.getElementById('id_token').value = idToken;
+        
+        // 📋 Copy to clipboard for easy access
+        navigator.clipboard.writeText(idToken).then(() => {
+            console.log('✅ ID Token copied to clipboard!');
+        });
+        
+        // Test với backend API
+        resultDiv.innerHTML = `
+            <h4>⏳ Testing with backend API...</h4>
+        `;
+        
+        const response = await fetch('https://localhost:8080/api/auth/social/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                provider: 'google',
+                id_token: idToken
+            })
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        
+        // Success display
+        resultDiv.className = 'response success';
+        resultDiv.innerHTML = `
+            <h3>✅ Authentication Success</h3>
+            <p><strong>User:</strong> ${user.displayName} (${user.email})</p>
+            <p><strong>UID:</strong> ${user.uid}</p>
+            <p><strong>🎯 Tokens auto-filled in inputs below!</strong></p>
+            <details>
+                <summary><strong>Backend Response:</strong></summary>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            </details>
+            <details>
+                <summary><strong>Raw Tokens:</strong></summary>
+                <p><strong>Access Token:</strong> ${accessToken || 'Not available'}</p>
+                <p><strong>ID Token:</strong> ${idToken.substring(0, 50)}...</p>
+            </details>
+        `;
+        
+    } catch (error) {
+        console.error('❌ Error:', error);
+        resultDiv.className = 'response error';
+        resultDiv.innerHTML = `
+            <h3>❌ Error</h3>
+            <pre>${error.message}</pre>
+        `;
+    }
+};
+    </script>
+</head>
+<body>
+    <h1>🧪 Test File Converter API</h1>
+    
+    <!-- Google Sign-In Section -->
+    <div class="container">
+        <h2>🔐 Google Sign-In Test</h2>
+        <p>Click button below to test Google authentication:</p>
+        
+
+        <!-- <div id="g_id_onload"
+             data-client_id="711510023006-vnijra3093liiq770ju50emq8rhmr4kl.apps.googleusercontent.com"
+             data-callback="handleGoogleSignIn"
+             data-auto_prompt="false">
+        </div>
+        <div class="g_id_signin" 
+             data-type="standard" 
+             data-size="large" 
+             data-theme="outline" 
+             data-text="sign_in_with"
+             data-shape="rectangular"
+             data-logo_alignment="left">
+        </div>
+        
+        <div id="google-response" class="response" style="display: none;">
+            <h4>Google Sign-In Response:</h4>
+            <pre id="google-result"></pre>
+        </div> -->
+    <button onclick="signInWithGoogle()" style="padding: 15px 30px; background: #4285f4; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+        🔥 Sign in with Google (Firebase)
+    </button>
+    
+    <div id="result" class="response" style="display: none;">
+        <h4>Firebase Auth Result:</h4>
+        <pre id="firebase-result"></pre>
+
+</div>
+    </div>
+
+    <!-- Manual Test Section -->
+    <div class="container">
+        <h2>🧪 Manual API Test</h2>
+        <p>Test with custom tokens:</p>
+        
+        <div>
+            <label for="provider">Provider:</label>
+            <select id="provider">
+                <option value="google">Google</option>
+                <option value="facebook">Facebook</option>
+            </select>
+        </div>
+        <br>
+        
+        <div>
+            <label for="access_token">Access Token:</label>
+            <input type="text" id="access_token" placeholder="Enter access token" style="width: 100%; padding: 5px;">
+        </div>
+        <br>
+        
+        <div>
+            <label for="id_token">ID Token (Google only):</label>
+            <input type="text" id="id_token" placeholder="Enter ID token" style="width: 100%; padding: 5px;">
+        </div>
+        <br>
+        
+        <button onclick="testManualLogin()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            🚀 Test API
+        </button>
+        
+        <div id="manual-response" class="response" style="display: none;">
+            <h4>API Response:</h4>
+            <pre id="manual-result"></pre>
+        </div>
+    </div>
+
+    <!-- Quick Test Section -->
+    <div class="container">
+        <h2>⚡ Quick Test (Mock Data)</h2>
+        <p>Test with invalid tokens to check error handling:</p>
+        
+        <button onclick="testInvalidToken()" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+            ❌ Test Invalid Token
+        </button>
+        
+        <button onclick="testMissingFields()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            📝 Test Missing Fields
+        </button>
+        
+        <div id="quick-response" class="response" style="display: none;">
+            <h4>Quick Test Response:</h4>
+            <pre id="quick-result"></pre>
+        </div>
+    </div>
+
+    <!-- Server Status -->
+    <div class="container">
+        <h2>🔍 Server Status</h2>
+        <button onclick="checkServerStatus()" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            📡 Check Server
+        </button>
+        
+        <div id="status-response" class="response" style="display: none;">
+            <h4>Server Status:</h4>
+            <pre id="status-result"></pre>
+        </div>
+    </div>
+
+    <script>
+        // API Base URL
+        const API_BASE = 'https://localhost:8080/api';
+        
+        // Handle Google Sign-In response
+        function handleGoogleSignIn(response) {
+            console.log('Google ID Token:', response.credential);
+            
+            const responseDiv = document.getElementById('google-response');
+            const resultPre = document.getElementById('google-result');
+            
+            // Test with backend API
+            testSocialLogin('google', '', response.credential)
+                .then(data => {
+                    responseDiv.className = 'response success';
+                    resultPre.textContent = JSON.stringify(data, null, 2);
+                })
+                .catch(error => {
+                    responseDiv.className = 'response error';
+                    resultPre.textContent = JSON.stringify(error, null, 2);
+                })
+                .finally(() => {
+                    responseDiv.style.display = 'block';
+                });
+        }
+        
+        // Manual test function
+        function testManualLogin() {
+            const provider = document.getElementById('provider').value;
+            const accessToken = document.getElementById('access_token').value;
+            const idToken = document.getElementById('id_token').value;
+            
+            const responseDiv = document.getElementById('manual-response');
+            const resultPre = document.getElementById('manual-result');
+            
+            if (!accessToken && !idToken) {
+                responseDiv.className = 'response error';
+                resultPre.textContent = 'Please enter at least access_token or id_token';
+                responseDiv.style.display = 'block';
+                return;
+            }
+            
+            testSocialLogin(provider, accessToken, idToken)
+                .then(data => {
+                    responseDiv.className = 'response success';
+                    resultPre.textContent = JSON.stringify(data, null, 2);
+                })
+                .catch(error => {
+                    responseDiv.className = 'response error';
+                    resultPre.textContent = JSON.stringify(error, null, 2);
+                })
+                .finally(() => {
+                    responseDiv.style.display = 'block';
+                });
+        }
+        
+        // Test invalid token
+        function testInvalidToken() {
+            const responseDiv = document.getElementById('quick-response');
+            const resultPre = document.getElementById('quick-result');
+            
+            testSocialLogin('google', 'invalid_access_token', 'invalid_id_token')
+                .then(data => {
+                    responseDiv.className = 'response success';
+                    resultPre.textContent = JSON.stringify(data, null, 2);
+                })
+                .catch(error => {
+                    responseDiv.className = 'response error';
+                    resultPre.textContent = JSON.stringify(error, null, 2);
+                })
+                .finally(() => {
+                    responseDiv.style.display = 'block';
+                });
+        }
+        
+        // Test missing fields
+        function testMissingFields() {
+            const responseDiv = document.getElementById('quick-response');
+            const resultPre = document.getElementById('quick-result');
+            
+            fetch(`${API_BASE}/auth/social/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    provider: 'google'
+                    // Missing tokens
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                responseDiv.className = 'response error';
+                resultPre.textContent = JSON.stringify(data, null, 2);
+            })
+            .catch(error => {
+                responseDiv.className = 'response error';
+                resultPre.textContent = `Network Error: ${error.message}`;
+            })
+            .finally(() => {
+                responseDiv.style.display = 'block';
+            });
+        }
+        
+        // Check server status
+        function checkServerStatus() {
+            const responseDiv = document.getElementById('status-response');
+            const resultPre = document.getElementById('status-result');
+            
+            fetch(`${API_BASE}/upload`, {
+                method: 'GET'
+            })
+            .then(response => {
+                responseDiv.className = response.ok ? 'response success' : 'response error';
+                return response.text();
+            })
+            .then(data => {
+                resultPre.textContent = `Status: Server is running\nResponse: ${data}`;
+            })
+            .catch(error => {
+                responseDiv.className = 'response error';
+                resultPre.textContent = `Status: Server is down\nError: ${error.message}`;
+            })
+            .finally(() => {
+                responseDiv.style.display = 'block';
+            });
+        }
+        
+        // Generic social login test function
+        function testSocialLogin(provider, accessToken, idToken) {
+            const payload = {
+                provider: provider
+            };
+            
+            if (accessToken) payload.access_token = accessToken;
+            if (idToken) payload.id_token = idToken;
+            
+            console.log('Testing with payload:', payload);
+            
+            return fetch(`${API_BASE}/auth/social/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(JSON.stringify(err));
+                    });
+                }
+                return response.json();
+            });
+        }
+        
+        // Show initial instructions
+        window.onload = function() {
+            console.log('🧪 Test page loaded');
+            console.log('📝 Remember to:');
+            console.log('1. Replace YOUR_GOOGLE_CLIENT_ID_HERE with real Google Client ID');
+            console.log('2. Make sure your server is running at https://localhost:8080');
+            console.log('3. Check browser console for detailed logs');
+        };
+    </script>
+</body>
+</html>
