@@ -87,7 +87,6 @@ services:
 networks:
   mynetwork:
 
-
 # ADD THIS SECTION - Volume definitions
 volumes:
   postgres_data:
