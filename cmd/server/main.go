@@ -24,11 +24,18 @@ import (
 func main() {
 	cfg := config.Load()
 
+	db, err := config.ConnectDB()
+	if err != nil {
+		log.Fatalf("💥 Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
 	// Asynq client
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{
 		Addr:     cfg.RedisAddr,
 		Password: cfg.RedisPass,
 	})
+
 	defer asynqClient.Close()
 
 	app := fiber.New(fiber.Config{
