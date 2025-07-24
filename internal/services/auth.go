@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/MinhT933/file-converter/internal/domain"
 	"github.com/golang-jwt/jwt/v5"
@@ -53,7 +53,6 @@ func (s *AuthService) LoginExistingUser(ctx context.Context, user *domain.User) 
 		log.Printf("Error creating session for existing user: %v", err)
 		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
-
 	return &domain.AuthResult{
 		SessionToken: sessionToken,
 		User:         user,
@@ -98,13 +97,12 @@ func (s *AuthService) createOAuthUser(ctx context.Context, providerData domain.P
 	}, nil
 }
 
-
 var jwtSecret = []byte(os.Getenv("JWT_SECRET_KEY"))
 
 func generateJWT(userID string) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": userID,
-		"exp":     time.Now().Add(30 * time.Minute).Unix(),
+		"exp":     time.Now().Add(1 * time.Minute).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(jwtSecret)

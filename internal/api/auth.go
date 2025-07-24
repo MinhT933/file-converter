@@ -3,8 +3,8 @@ package api
 import (
 	"strings"
 
-	"github.com/MinhT933/file-converter/internal/infra/auth"
 	"github.com/MinhT933/file-converter/internal/domain"
+	"github.com/MinhT933/file-converter/internal/infra/auth"
 	"github.com/MinhT933/file-converter/internal/services"
 
 	"github.com/gofiber/fiber/v2"
@@ -35,8 +35,8 @@ type AuthUser struct {
 }
 
 type LinkAccountRequest struct {
-    ExistingUserID string `json:"existing_user_id"`
-    ProviderData   domain.ProviderData `json:"provider_data"`
+	ExistingUserID string              `json:"existing_user_id"`
+	ProviderData   domain.ProviderData `json:"provider_data"`
 }
 
 type SocialLoginRequest struct {
@@ -45,16 +45,12 @@ type SocialLoginRequest struct {
 	IDToken     string `json:"id_token,omitempty"`               // ID token (cho Google)
 }
 
-
-
 func NewHandler(authProvider *auth.FirebaseProvider, authService *services.AuthService) *Handler {
-    return &Handler{
-        AuthProvider: authProvider,
-        AuthService:  authService,
-    }
+	return &Handler{
+		AuthProvider: authProvider,
+		AuthService:  authService,
+	}
 }
-
-
 
 // Login godoc
 // @Summary     Login with email and password
@@ -157,18 +153,17 @@ func (h *Handler) VerifyToken(c *fiber.Ctx) error {
 
 func (h *Handler) handleGoogleLogin(c *fiber.Ctx, req SocialLoginRequest) error {
 	// Xử lý đăng nhập với Google
-	FbUser, token, err := h.AuthProvider.GoogleLogin(c.Context(), req.AccessToken, req.IDToken)
+	FbUser, _, err := h.AuthProvider.GoogleLogin(c.Context(), req.AccessToken, req.IDToken)
 	if err != nil {
 		return fiber.NewError(fiber.StatusUnauthorized, "Google login failed: "+err.Error())
 	}
 
-    providerData := domain.ProviderData{
-		UID:           FbUser.UID,
-		Email:        FbUser.Email,
-		DisplayName:  FbUser.DisplayName,
-		PhotoURL:     FbUser.PhotoURL,
+	providerData := domain.ProviderData{
+		UID:         FbUser.UID,
+		Email:       FbUser.Email,
+		DisplayName: FbUser.DisplayName,
+		PhotoURL:    FbUser.PhotoURL,
 	}
-
 
 	authResult, err := h.AuthService.HandleProviderLogin(c.Context(), providerData)
 	if err != nil {
@@ -178,74 +173,73 @@ func (h *Handler) handleGoogleLogin(c *fiber.Ctx, req SocialLoginRequest) error 
 	if authResult.RequiresLinking {
 		// Link the social account with the existing user account
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
-            "requires_linking": true,
-            "message":         "Email already exists with different provider",
-            "existing_user":   authResult.ExistingUser,
-            "provider_data":   authResult.ProviderData,
-        })
+			"requires_linking": true,
+			"message":          "Email already exists with different provider",
+			"existing_user":    authResult.ExistingUser,
+			"provider_data":    authResult.ProviderData,
+		})
 	}
 
 	return c.JSON(LoginResponse{
-		Token:   token,
-	    User:    convertDomainUserToAPIUser(authResult.User),
+		Token:   authResult.SessionToken,
+		User:    convertDomainUserToAPIUser(authResult.User),
 		Message: "Google login successful",
 	})
 }
 
 func (h *Handler) handleFacebookLogin(c *fiber.Ctx, req SocialLoginRequest) error {
-    // Similar implementation for Facebook
-    // firebaseUser, err := h.AuthProvider.VerifyFacebookToken(c.Context(), req.AccessToken)
-    // if err != nil {
-    //     return fiber.NewError(fiber.StatusUnauthorized, "Invalid Facebook token: "+err.Error())
-    // }
+	// Similar implementation for Facebook
+	// firebaseUser, err := h.AuthProvider.VerifyFacebookToken(c.Context(), req.AccessToken)
+	// if err != nil {
+	//     return fiber.NewError(fiber.StatusUnauthorized, "Invalid Facebook token: "+err.Error())
+	// }
 
-    // providerData := domain.ProviderData{
-    //     UID:           firebaseUser.UID,
-    //     Email:         firebaseUser.Email,
-    //     DisplayName:   firebaseUser.DisplayName,
-    //     PhotoURL:      firebaseUser.PhotoURL,
-    //     ProviderID:    "facebook.com",
-    //     EmailVerified: firebaseUser.EmailVerified,
-    // }
+	// providerData := domain.ProviderData{
+	//     UID:           firebaseUser.UID,
+	//     Email:         firebaseUser.Email,
+	//     DisplayName:   firebaseUser.DisplayName,
+	//     PhotoURL:      firebaseUser.PhotoURL,
+	//     ProviderID:    "facebook.com",
+	//     EmailVerified: firebaseUser.EmailVerified,
+	// }
 
-    // authResult, err := h.AuthService.HandleProviderLogin(c.Context(), providerData)
-    // if err != nil {
-    //     return fiber.NewError(fiber.StatusInternalServerError, "Database error: "+err.Error())
-    // }
+	// authResult, err := h.AuthService.HandleProviderLogin(c.Context(), providerData)
+	// if err != nil {
+	//     return fiber.NewError(fiber.StatusInternalServerError, "Database error: "+err.Error())
+	// }
 
-    // if authResult.RequiresLinking {
-    //     return c.Status(fiber.StatusConflict).JSON(fiber.Map{
-    //         "requires_linking": true,
-    //         "message":         "Email already exists with different provider",
-    //         "existing_user":   authResult.ExistingUser,
-    //         "provider_data":   authResult.ProviderData,
-    //     })
-    // }
+	// if authResult.RequiresLinking {
+	//     return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+	//         "requires_linking": true,
+	//         "message":         "Email already exists with different provider",
+	//         "existing_user":   authResult.ExistingUser,
+	//         "provider_data":   authResult.ProviderData,
+	//     })
+	// }
 
-    // return c.JSON(LoginResponse{
-    //     Token:   authResult.SessionToken,
-    //     User:    convertDomainUserToAPIUser(authResult.User),
-    //     Message: "Facebook login successful",
-    // })
+	// return c.JSON(LoginResponse{
+	//     Token:   authResult.SessionToken,
+	//     User:    convertDomainUserToAPIUser(authResult.User),
+	//     Message: "Facebook login successful",
+	// })
 	return nil
 }
 
-
 func convertDomainUserToAPIUser(user *domain.User) *auth.User {
-    return &auth.User{
-        UID:          user.UserID,
-        Email:        user.Email,
-        DisplayName:  user.Name,
-        PhotoURL:     getStringValue(user.AvatarURL),
-        EmailVerified: user.EmailVerified,
-    }
+	return &auth.User{
+		UID:           user.UserID,
+		Email:         user.Email,
+		DisplayName:   user.Name,
+		PhotoURL:      getStringValue(user.AvatarURL),
+		EmailVerified: user.EmailVerified,
+	}
 }
 
 func getStringValue(s *string) string {
-    if s != nil {
-        return *s
-    }
-    return ""
+	if s != nil {
+		return *s
+	}
+	return ""
 }
 
 // func (h *Handler) handleLinkedInLogin(c *fiber.Ctx, req SocialLoginRequest) error {
