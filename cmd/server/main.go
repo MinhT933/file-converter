@@ -14,6 +14,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/hibiken/asynq"
+	"github.com/MinhT933/file-converter/internal/repositories"
+	"github.com/MinhT933/file-converter/internal/services"
 )
 
 // @title           File Converter API
@@ -30,13 +32,20 @@ func main() {
 
 	fb := firebase.NewClient(ctx, cfg.FirebaseCredFile)
 
-	authProvider := auth.NewFirebaseProvider(fb.Auth)
+
+
+
 
 	db, err := config.ConnectDB()
 	if err != nil {
 		log.Fatalf("💥 Failed to connect to database: %v", err)
 	}
 	defer db.Close()
+
+	userRepo := repositories.NewUserRepository(db)
+	authService := services.NewAuthService(userRepo)
+
+	authProvider := auth.NewFirebaseProvider(fb.Auth)
 
 	// Asynq client
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{
@@ -52,7 +61,7 @@ func main() {
 
 	//thêm
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://127.0.0.1:8080, http://localhost:8080, https://localhost:3000/",
+		AllowOrigins:     "http://127.0.0.1:8080, http://localhost:8080, https://localhost:3000/, http://localhost:3000/",
 		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
 		AllowCredentials: true,
 		AllowHeaders:     "Content-Type, Authorization",
@@ -61,7 +70,7 @@ func main() {
 
 	app.Get("/swagger/*", fiberSwagger.HandlerDefault)
 
-	api.RegisterRoutes(app, cfg, asynqClient, authProvider)
+	api.RegisterRoutes(app, cfg, asynqClient, authProvider, authService)
 
 	log.Fatal(app.ListenTLS(
 		":8080",

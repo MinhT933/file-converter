@@ -31,8 +31,8 @@ func (h *Handler) ConvertHTMLPDF(c *fiber.Ctx) error {
 	pr, pw := io.Pipe()
 	errCh := make(chan error, 1)
 	go func() {
-		defer pw.Close()
-		errCh <- converter.Registry["html_pdf"].Convert(c.Context(), src, pw)
+		defer pw.Close() //??
+		errCh <- converter.Registry["html_pdf"].Convert(c.Context(), src, pw) // tạo chanel 
 		pw.Close()
 	}()
 
