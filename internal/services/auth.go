@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"errors"
 
 	"github.com/MinhT933/file-converter/internal/domain"
 	"github.com/golang-jwt/jwt/v5"
@@ -25,16 +26,19 @@ func NewAuthService(userRepo domain.UserRepository) *AuthService {
 }
 
 func (s *AuthService) HandleProviderLogin(ctx context.Context, providerData domain.ProviderData) (*domain.AuthResult, error) {
+	var ErrUserNotFound = errors.New("user not found")
 	// Xử lý đăng nhập với data nhà cung cấp
 	provider := extractProviderName(providerData.ProviderID)
 
 	existingUser, err := s.userRepo.FindByEmail(ctx, providerData.Email)
 	if err != nil {
-		log.Print("User does not exist, creating new user")
-		return s.createOAuthUser(ctx, providerData, provider)
+		if errors.Is(err, ErrUserNotFound) {
+			log.Print("User does not exist, creating new user")
+			return s.createOAuthUser(ctx, providerData, provider)
+		}
+		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
-
-	if existingUser.Provider != nil && *existingUser.Provider == provider {
+	if existingUser.Provider != nil && strings.EqualFold(*existingUser.Provider, provider) {
 		//user tồn tại
 		return s.LoginExistingUser(ctx, existingUser)
 	}
