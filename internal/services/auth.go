@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 	"errors"
+	"strconv"
 
 	"github.com/MinhT933/file-converter/internal/domain"
 	"github.com/golang-jwt/jwt/v5"
@@ -96,15 +97,27 @@ func (s *AuthService) createOAuthUser(ctx context.Context, providerData domain.P
 	}, nil
 }
 
-var jwtSecret = []byte(os.Getenv("JWT_SECRET_KEY"))
+var errMissingJWTSecret = errors.New("JWT_SECRET_KEY environment variable is not set")
 
 func generateJWT(userID string) (string, error) {
+	secret := os.Getenv("JWT_SECRET_KEY")
+	if secret == "" {
+		return "", errMissingJWTSecret
+	}
+
+	expMinutes := 1
+	if v := os.Getenv("JWT_EXP_MINUTES"); v != "" {
+		if m, err := strconv.Atoi(v); err == nil {
+			expMinutes = m
+		}
+	}
+
 	claims := jwt.MapClaims{
 		"user_id": userID,
-		"exp":     time.Now().Add(1 * time.Minute).Unix(),
+		"exp":     time.Now().Add(time.Duration(expMinutes) * time.Minute).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return token.SignedString([]byte(secret))
 }
 
 func extractProviderName(providerID string) string {
