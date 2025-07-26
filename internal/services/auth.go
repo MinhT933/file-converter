@@ -84,11 +84,6 @@ func (s *AuthService) createOAuthUser(ctx context.Context, providerData domain.P
 		return nil, err
 	}
 
-	if err != nil {
-		log.Printf("Error creating session: %v", err)
-		return nil, err
-	}
-
 	token, err := generateJWT(newUser.UserID)
 	if err != nil {
 		log.Printf("Error generating JWT for new user: %v", err)
