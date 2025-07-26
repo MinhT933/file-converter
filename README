@@ -25,7 +25,8 @@ This is a monorepo Go service with two main components:
 - [📝 License](#-license)
 
 ---
-
+## 📃Introduction
+This project follow Domain-Driven Design (DDD). 
 
 ## 🚀 Quick Start
 

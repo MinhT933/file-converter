@@ -3,12 +3,13 @@ package api
 import (
 	"github.com/MinhT933/file-converter/internal/config"
 	"github.com/MinhT933/file-converter/internal/infra/auth"
+	"github.com/MinhT933/file-converter/internal/services"
 	"github.com/gofiber/fiber/v2"
 	"github.com/hibiken/asynq"
 )
 
-func RegisterRoutes(app *fiber.App, cfg *config.Config, client *asynq.Client, authProvider auth.Provider) {
-	h := &Handler{Cfg: cfg, AsynqClient: client, AuthProvider: authProvider}
+func RegisterRoutes(app *fiber.App, cfg *config.Config, client *asynq.Client, authProvider auth.Provider, authService *services.AuthService) {
+	h := &Handler{Cfg: cfg, AsynqClient: client, AuthProvider: authProvider, AuthService: authService}
 
 	v1 := app.Group("/api")
 	v1.Post("/upload", h.Upload)

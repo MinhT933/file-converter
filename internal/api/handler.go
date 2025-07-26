@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/MinhT933/file-converter/internal/config"
 	"github.com/MinhT933/file-converter/internal/infra/auth"
+	"github.com/MinhT933/file-converter/internal/services"
 	"github.com/gofiber/fiber/v2"
 	"github.com/hibiken/asynq"
 )
@@ -12,6 +13,7 @@ type Handler struct {
 	Cfg          *config.Config
 	AsynqClient  *asynq.Client
 	AuthProvider auth.Provider
+	AuthService  *services.AuthService
 }
 
 // Upload handles file upload
