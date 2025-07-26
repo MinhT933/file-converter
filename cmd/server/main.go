@@ -31,10 +31,9 @@ func main() {
 	ctx := context.Background()
 
 	fb := firebase.NewClient(ctx, cfg.FirebaseCredFile)
-
-
-
-
+    if fb == nil {
+        log.Fatal("Failed to create Firebase client")
+    }
 
 	db, err := config.ConnectDB()
 	if err != nil {
