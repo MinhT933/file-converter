@@ -20,6 +20,11 @@ type AuthService struct {
 }
 
 // hàm dựng factory func cho AuthService
+// đảm bảo nhất quán
+// trong việc khởi tạo AuthService với UserRepository
+// và có thể mở rộng trong tương lai nếu cần
+// Ví dụ: nếu cần thêm các dịch vụ khác như EmailService, có thể thêm vào
+
 func NewAuthService(userRepo domain.UserRepository) *AuthService {
 	return &AuthService{
 		userRepo: userRepo,
