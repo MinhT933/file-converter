@@ -119,12 +119,10 @@ pipeline {
 
     post {
     always { 
-        node {
-            script {
-                // Cleanup in script block instead of cleanWs()
-                sh 'docker system prune -f || true'
-                sh 'rm -rf ./* || true'
-            }
+        script {
+            // Cleanup in script block instead of cleanWs()
+            sh 'docker system prune -f || true'
+            sh 'rm -rf ./* || true'
         }
 
     }
