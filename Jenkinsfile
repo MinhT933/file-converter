@@ -113,28 +113,44 @@ pipeline {
     }
 
     post {
-    always { cleanWs() }
+    always { 
+        script {
+            // Cleanup in script block instead of cleanWs()
+            sh 'docker system prune -f || true'
+            sh 'rm -rf ./* || true'
+        }
+    }
     success {
         script {
-            def executionTime = String.format("%.2f", currentBuild.duration / 1000.0) // Time in seconds
-            def timestamp = new Date().format("yyyy-MM-dd HH:mm:ss", TimeZone.getTimeZone("UTC"))
-            def branchName = env.BRANCH_NAME ?: 'unknown'
-            def commitHash = env.GIT_COMMIT_HASH ?: 'unknown'
-            def author = env.GIT_AUTHOR ?: 'unknown'
-            def message = env.GIT_COMMIT_MESSAGE ?: 'unknown'
+            try {
+                def executionTime = String.format("%.2f", currentBuild.duration / 1000.0)
+                def timestamp = new Date().format("yyyy-MM-dd HH:mm:ss", TimeZone.getTimeZone("UTC"))
+                def branchName = env.BRANCH_NAME ?: 'unknown'
+                def commitHash = env.GIT_COMMIT_HASH ?: 'unknown'
+                def author = env.GIT_AUTHOR ?: 'unknown'
+                def message = env.GIT_COMMIT_MESSAGE ?: 'unknown'
 
-            echo "✅ Build Successful!"
-            discordSend(
-              webhookURL: env.DISCORD_WEBHOOK_URL,
-              description: "**Job:** ${env.JOB_NAME}\n**Build:** #${env.BUILD_NUMBER}\n**Branch:** ${branchName}\n**Commit:** `${commitHash}`\n**Author:** ${author}\n**Message:** ${message}\n**Execution Time:** ${executionTime} sec\n**Timestamp:** ${timestamp}\n[View Build](${env.BUILD_URL})",
-              title: "✅ Build Successful!",
-              footer: "Jenkins CI/CD | Success ✅"
-            )
-        }
+                echo "✅ Build Successful!"
+                
+                // Check if Discord webhook exists
+                withCredentials([string(credentialsId: 'DISCORD_WEBHOOK_URL', variable: 'WEBHOOK_URL')]) {
+                    discordSend(
+                        webhookURL: WEBHOOK_URL,
+                        description: "**Job:** ${env.JOB_NAME}\\n**Build:** #${env.BUILD_NUMBER}\\n**Branch:** ${branchName}\\n**Commit:** `${commitHash}`\\n**Author:** ${author}\\n**Message:** ${message}\\n**Execution Time:** ${executionTime} sec\\n**Timestamp:** ${timestamp}\\n[View Build](${env.BUILD_URL})",
+                        title: "✅ Build Successful!",
+                        footer: "Jenkins CI/CD | Success ✅"
+                    )
+                }
+            } catch (Exception e) {
+                echo "Failed to send Discord notification: ${e.getMessage()}"
+            }
 
+            
         sh 'docker system prune -f'
 
         sh 'journalctl --vacuum-size=100M || true'
+        }
+
     }
     failure {
        script{
