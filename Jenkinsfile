@@ -1,6 +1,11 @@
 pipeline {
     agent any 
 
+
+    triggers {
+        githubPush()
+    }
+
     options {
         timeout(time: 1, unit: 'HOURS')
         timestamps()
@@ -10,10 +15,10 @@ pipeline {
     environment {
         // Define your environment variables here
 
-        TAG = "${env.BRAND_NAME ?: 'main'}-${env.BUILD_NUMBER}"
-        LABEL = "${env.BRAND_NAME ?: 'main'}-${env.BUILD_NUMBER}"
-        VERSION = "${env.BRAND_NAME ?: 'main'}-${env.BUILD_NUMBER}"
-        BUILD_ID = "${env.BRAND_NAME ?: 'main'}-${env.BUILD_NUMBER}"
+        TAG = "${env.BRANCH_NAME ?: 'main'}-${env.BUILD_NUMBER}"
+        LABEL = "${env.BRANCH_NAME ?: 'main'}-${env.BUILD_NUMBER}"
+        VERSION = "${env.BRANCH_NAME ?: 'main'}-${env.BUILD_NUMBER}"
+        BUILD_ID = "${env.BRANCH_NAME ?: 'main'}-${env.BUILD_NUMBER}"
         LATEST = "latest"
         DISCORD_WEBHOOK_URL= credentials('DISCORD_WEBHOOK_URL')
     }
@@ -114,11 +119,14 @@ pipeline {
 
     post {
     always { 
-        script {
-            // Cleanup in script block instead of cleanWs()
-            sh 'docker system prune -f || true'
-            sh 'rm -rf ./* || true'
+        node {
+            script {
+                // Cleanup in script block instead of cleanWs()
+                sh 'docker system prune -f || true'
+                sh 'rm -rf ./* || true'
+            }
         }
+
     }
     success {
         script {
@@ -152,20 +160,28 @@ pipeline {
         }
 
     }
-    failure {
-       script{
-         def branchName = env.BRANCH_NAME ?: 'unknown'
-         def commitHash = env.GIT_COMMIT_HASH ?: 'unknown'
-         def author = env.GIT_AUTHOR ?: 'unknown'
-         def message = env.GIT_COMMIT_MESSAGE ?: 'unknown'
-         echo "❌ Build Failed!"
-         discordSend(
-            webhookURL: env.DISCORD_WEBHOOK_URL,
-            description: "**Job:** ${env.JOB_NAME}\n**Build:** #${env.BUILD_NUMBER}\n**Branch:** ${branchName}\n**Commit:** `${commitHash}`\n**Author:** ${author}\n**Message:** ${message}\n[View Build](${env.BUILD_URL})",
-            title: "❌ Build Failed!",
-            footer: "Jenkins CI/CD | Failed ❌"
-         )
-    }
-    }
+  failure {
+            script {
+                try {
+                    def branchName = env.BRANCH_NAME ?: 'unknown'
+                    def commitHash = env.GIT_COMMIT_HASH ?: 'unknown'
+                    def author = env.GIT_AUTHOR ?: 'unknown'
+                    def message = env.GIT_COMMIT_MESSAGE ?: 'unknown'
+                    
+                    echo "❌ Build Failed!"
+                    
+                    withCredentials([string(credentialsId: 'DISCORD_WEBHOOK_URL', variable: 'WEBHOOK_URL')]) {
+                        discordSend(
+                            webhookURL: WEBHOOK_URL,
+                            description: "**Job:** ${env.JOB_NAME}\\n**Build:** #${env.BUILD_NUMBER}\\n**Branch:** ${branchName}\\n**Commit:** `${commitHash}`\\n**Author:** ${author}\\n**Message:** ${message}\\n[View Build](${env.BUILD_URL})",
+                            title: "❌ Build Failed!",
+                            footer: "Jenkins CI/CD | Failed ❌"
+                        )
+                    }
+                } catch (Exception e) {
+                    echo "Failed to send Discord notification: ${e.getMessage()}"
+                }
+            }
+        }
   }
 }
