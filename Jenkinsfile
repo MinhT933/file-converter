@@ -20,7 +20,7 @@ pipeline {
         VERSION = "${env.BRANCH_NAME ?: 'main'}-${env.BUILD_NUMBER}"
         BUILD_ID = "${env.BRANCH_NAME ?: 'main'}-${env.BUILD_NUMBER}"
         LATEST = "latest"
-        DISCORD_WEBHOOK_URL= credentials('DISCORD_WEBHOOK_URL')
+        // DISCORD_WEBHOOK_URL= credentials('DISCORD_WEBHOOK_URL')
     }
 
     stages {
