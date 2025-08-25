@@ -10,10 +10,10 @@ pipeline {
     environment {
         // Define your environment variables here
 
-        TAG = "${env.BRAND_NAME ?: 'main'}- ${env.BUILD_NUMBER}"
-        LABEL = "${env.BRAND_NAME ?: 'main'}- ${env.BUILD_NUMBER}"
-        VERSION = "${env.BRAND_NAME ?: 'main'}- ${env.BUILD_NUMBER}"
-        BUILD_ID = "${env.BRAND_NAME ?: 'main'}- ${env.BUILD_NUMBER}"
+        TAG = "${env.BRAND_NAME ?: 'main'}-${env.BUILD_NUMBER}"
+        LABEL = "${env.BRAND_NAME ?: 'main'}-${env.BUILD_NUMBER}"
+        VERSION = "${env.BRAND_NAME ?: 'main'}-${env.BUILD_NUMBER}"
+        BUILD_ID = "${env.BRAND_NAME ?: 'main'}-${env.BUILD_NUMBER}"
         LATEST = "latest"
         DISCORD_WEBHOOK_URL= credentials('DISCORD_WEBHOOK_URL')
     }
@@ -126,7 +126,7 @@ pipeline {
             echo "✅ Build Successful!"
             discordSend(
               webhookURL: env.DISCORD_WEBHOOK_URL,
-              description: "**Job:** ${env.JOB_NAME}\n**Build:** #${env.BUILD_NUMBER}\n**Branch:** ${branchName}\n**Commit:** \`${commitHash}\`\n**Author:** ${author}\n**Message:** ${message}\n**Execution Time:** ${executionTime} sec\n**Timestamp:** ${timestamp}\n[View Build](${env.BUILD_URL})",
+              description: "**Job:** ${env.JOB_NAME}\n**Build:** #${env.BUILD_NUMBER}\n**Branch:** ${branchName}\n**Commit:** `${commitHash}`\n**Author:** ${author}\n**Message:** ${message}\n**Execution Time:** ${executionTime} sec\n**Timestamp:** ${timestamp}\n[View Build](${env.BUILD_URL})",
               title: "✅ Build Successful!",
               footer: "Jenkins CI/CD | Success ✅"
             )
@@ -137,13 +137,19 @@ pipeline {
         sh 'journalctl --vacuum-size=100M || true'
     }
     failure {
-        echo "❌ Build Failed!"
-        discordSend(
+       script{
+         def branchName = env.BRANCH_NAME ?: 'unknown'
+         def commitHash = env.GIT_COMMIT_HASH ?: 'unknown'
+         def author = env.GIT_AUTHOR ?: 'unknown'
+         def message = env.GIT_COMMIT_MESSAGE ?: 'unknown'
+         echo "❌ Build Failed!"
+         discordSend(
             webhookURL: env.DISCORD_WEBHOOK_URL,
-            description: "**Job:** ${env.JOB_NAME}\n**Build:** #${buildNumber}\n**Branch:** ${branchName}\n**Commit:** \`${commitHash}\`\n**Author:** ${author}\n**Message:** ${message}\n[View Build](${env.BUILD_URL})",
+            description: "**Job:** ${env.JOB_NAME}\n**Build:** #${env.BUILD_NUMBER}\n**Branch:** ${branchName}\n**Commit:** `${commitHash}`\n**Author:** ${author}\n**Message:** ${message}\n[View Build](${env.BUILD_URL})",
             title: "❌ Build Failed!",
             footer: "Jenkins CI/CD | Failed ❌"
-        )
+         )
+    }
     }
   }
 }
