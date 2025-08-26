@@ -20,7 +20,7 @@ pipeline {
         VERSION = "${env.BRANCH_NAME ?: 'main'}-${env.BUILD_NUMBER}"
         BUILD_ID = "${env.BRANCH_NAME ?: 'main'}-${env.BUILD_NUMBER}"
         LATEST = "latest"
-        DISCORD_WEBHOOK_URL = credentials('DISCORD_WEBHOOK_URL')
+        // Remove DISCORD_WEBHOOK_URL from environment to use withCredentials
     }
 
     stages {
@@ -138,22 +138,25 @@ pipeline {
 
                 echo "✅ Build Successful!"
                 
-                // Sử dụng Discord webhook từ environment variable
-                sh """
-                    curl -H "Content-Type: application/json" \\
-                    -X POST \\
-                    -d '{
-                        "embeds": [{
-                            "title": "✅ Build Successful!",
-                            "description": "**Job:** ${env.JOB_NAME}\\n**Build:** #${env.BUILD_NUMBER}\\n**Branch:** ${branchName}\\n**Commit:** `${commitHash}`\\n**Author:** ${author}\\n**Message:** ${message}\\n**Execution Time:** ${executionTime} sec\\n**Timestamp:** ${timestamp}\\n[View Build](${env.BUILD_URL})",
-                            "color": 65280,
-                            "footer": {
-                                "text": "Jenkins CI/CD | Success ✅"
-                            }
-                        }]
-                    }' \\
-                    "${env.DISCORD_WEBHOOK_URL}"
-                """
+                // Sử dụng withCredentials để secure Discord webhook
+                withCredentials([string(credentialsId: 'DISCORD_WEBHOOK_URL', variable: 'WEBHOOK_URL')]) {
+                    sh '''
+                        curl -H "Content-Type: application/json" \
+                        -X POST \
+                        -d "{
+                            \\"username\\": \\"Jenkins CI/CD\\",
+                            \\"embeds\\": [{
+                                \\"title\\": \\"✅ Build Successful!\\",
+                                \\"description\\": \\"**Job:** ''' + env.JOB_NAME + '''\\\\n**Build:** #''' + env.BUILD_NUMBER + '''\\\\n**Branch:** ''' + branchName + '''\\\\n**Commit:** \`''' + commitHash + '''\`\\\\n**Author:** ''' + author + '''\\\\n**Message:** ''' + message + '''\\\\n**Execution Time:** ''' + executionTime + ''' sec\\\\n**Timestamp:** ''' + timestamp + '''\\\\n[View Build](''' + env.BUILD_URL + ''')\\",
+                                \\"color\\": 65280,
+                                \\"footer\\": {
+                                    \\"text\\": \\"Jenkins CI/CD | Success ✅\\"
+                                }
+                            }]
+                        }" \
+                        "$WEBHOOK_URL"
+                    '''
+                }
             } catch (Exception e) {
                 echo "Failed to send Discord notification: ${e.getMessage()}"
             }
@@ -175,22 +178,25 @@ pipeline {
                     
                     echo "❌ Build Failed!"
                     
-                    // Sử dụng Discord webhook từ environment variable
-                    sh """
-                        curl -H "Content-Type: application/json" \\
-                        -X POST \\
-                        -d '{
-                            "embeds": [{
-                                "title": "❌ Build Failed!",
-                                "description": "**Job:** ${env.JOB_NAME}\\n**Build:** #${env.BUILD_NUMBER}\\n**Branch:** ${branchName}\\n**Commit:** `${commitHash}`\\n**Author:** ${author}\\n**Message:** ${message}\\n[View Build](${env.BUILD_URL})",
-                                "color": 16711680,
-                                "footer": {
-                                    "text": "Jenkins CI/CD | Failed ❌"
-                                }
-                            }]
-                        }' \\
-                        "${env.DISCORD_WEBHOOK_URL}"
-                    """
+                    // Sử dụng withCredentials để secure Discord webhook
+                    withCredentials([string(credentialsId: 'DISCORD_WEBHOOK_URL', variable: 'WEBHOOK_URL')]) {
+                        sh '''
+                            curl -H "Content-Type: application/json" \
+                            -X POST \
+                            -d "{
+                                \\"username\\": \\"Jenkins CI/CD\\",
+                                \\"embeds\\": [{
+                                    \\"title\\": \\"❌ Build Failed!\\",
+                                    \\"description\\": \\"**Job:** ''' + env.JOB_NAME + '''\\\\n**Build:** #''' + env.BUILD_NUMBER + '''\\\\n**Branch:** ''' + branchName + '''\\\\n**Commit:** \`''' + commitHash + '''\`\\\\n**Author:** ''' + author + '''\\\\n**Message:** ''' + message + '''\\\\n[View Build](''' + env.BUILD_URL + ''')\\",
+                                    \\"color\\": 16711680,
+                                    \\"footer\\": {
+                                        \\"text\\": \\"Jenkins CI/CD | Failed ❌\\"
+                                    }
+                                }]
+                            }" \
+                            "$WEBHOOK_URL"
+                        '''
+                    }
                 } catch (Exception e) {
                     echo "Failed to send Discord notification: ${e.getMessage()}"
                 }
