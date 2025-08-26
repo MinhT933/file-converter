@@ -138,22 +138,12 @@ pipeline {
 
                 echo "✅ Build Successful!"
                 
-                // Sử dụng withCredentials để secure Discord webhook
+                // Đơn giản hóa Discord notification
                 withCredentials([string(credentialsId: 'DISCORD_WEBHOOK_URL', variable: 'WEBHOOK_URL')]) {
                     sh '''
-                        curl -H "Content-Type: application/json" \
-                        -X POST \
-                        -d "{
-                            \\"username\\": \\"Jenkins CI/CD\\",
-                            \\"embeds\\": [{
-                                \\"title\\": \\"✅ Build Successful!\\",
-                                \\"description\\": \\"**Job:** ''' + env.JOB_NAME + '''\\\\n**Build:** #''' + env.BUILD_NUMBER + '''\\\\n**Branch:** ''' + branchName + '''\\\\n**Commit:** \`''' + commitHash + '''\`\\\\n**Author:** ''' + author + '''\\\\n**Message:** ''' + message + '''\\\\n**Execution Time:** ''' + executionTime + ''' sec\\\\n**Timestamp:** ''' + timestamp + '''\\\\n[View Build](''' + env.BUILD_URL + ''')\\",
-                                \\"color\\": 65280,
-                                \\"footer\\": {
-                                    \\"text\\": \\"Jenkins CI/CD | Success ✅\\"
-                                }
-                            }]
-                        }" \
+                        curl -H "Content-Type: application/json" \\
+                        -X POST \\
+                        -d '{"username": "Jenkins CI/CD", "embeds": [{"title": "✅ Build Successful!", "description": "Build #''' + env.BUILD_NUMBER + ''' completed successfully for job ''' + env.JOB_NAME + '''", "color": 65280}]}' \\
                         "$WEBHOOK_URL"
                     '''
                 }
@@ -178,22 +168,12 @@ pipeline {
                     
                     echo "❌ Build Failed!"
                     
-                    // Sử dụng withCredentials để secure Discord webhook
+                    // Đơn giản hóa Discord notification
                     withCredentials([string(credentialsId: 'DISCORD_WEBHOOK_URL', variable: 'WEBHOOK_URL')]) {
                         sh '''
-                            curl -H "Content-Type: application/json" \
-                            -X POST \
-                            -d "{
-                                \\"username\\": \\"Jenkins CI/CD\\",
-                                \\"embeds\\": [{
-                                    \\"title\\": \\"❌ Build Failed!\\",
-                                    \\"description\\": \\"**Job:** ''' + env.JOB_NAME + '''\\\\n**Build:** #''' + env.BUILD_NUMBER + '''\\\\n**Branch:** ''' + branchName + '''\\\\n**Commit:** \`''' + commitHash + '''\`\\\\n**Author:** ''' + author + '''\\\\n**Message:** ''' + message + '''\\\\n[View Build](''' + env.BUILD_URL + ''')\\",
-                                    \\"color\\": 16711680,
-                                    \\"footer\\": {
-                                        \\"text\\": \\"Jenkins CI/CD | Failed ❌\\"
-                                    }
-                                }]
-                            }" \
+                            curl -H "Content-Type: application/json" \\
+                            -X POST \\
+                            -d '{"username": "Jenkins CI/CD", "embeds": [{"title": "❌ Build Failed!", "description": "Build #''' + env.BUILD_NUMBER + ''' failed for job ''' + env.JOB_NAME + '''", "color": 16711680}]}' \\
                             "$WEBHOOK_URL"
                         '''
                     }
