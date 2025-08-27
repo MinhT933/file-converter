@@ -7,7 +7,7 @@ import (
 )
 
 type UserRepository interface {
-	Create(ctx context.Context, user User)  error
+	Create(ctx context.Context, user User) error
 	FindByID(ctx context.Context, userID string) (*User, error)
 	FindByEmail(ctx context.Context, email string) (*User, error)
 	Update(ctx context.Context, user User) error
@@ -15,9 +15,9 @@ type UserRepository interface {
 	List(ctx context.Context) ([]*User, error)
 }
 
-
 type ConversionRepository interface {
-    Create(ctx context.Context, conversion *Conversion) (int, error)
-    FindByUserID(ctx context.Context, userID int) ([]Conversion, error)
-    FindByID(ctx context.Context, conversionID int) (*Conversion, error)
+	Create(ctx context.Context, conversion *Conversion) (string, error)
+	FindByUserID(ctx context.Context, userID string) ([]Conversion, error)
+	FindByID(ctx context.Context, conversionID string) (*Conversion, error)
+	UpdateConversionStatus(ctx context.Context, id string, status string) error
 }

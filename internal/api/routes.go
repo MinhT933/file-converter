@@ -8,8 +8,8 @@ import (
 	"github.com/hibiken/asynq"
 )
 
-func RegisterRoutes(app *fiber.App, cfg *config.Config, client *asynq.Client, authProvider auth.Provider, authService *services.AuthService) {
-	h := &Handler{Cfg: cfg, AsynqClient: client, AuthProvider: authProvider, AuthService: authService}
+func RegisterRoutes(app *fiber.App, cfg *config.Config, client *asynq.Client, authProvider auth.Provider, authService *services.AuthService, fileService *services.FileService) {
+	h := &Handler{Cfg: cfg, AsynqClient: client, AuthProvider: authProvider, AuthService: authService, FileService: fileService}
 
 	v1 := app.Group("/api")
 	v1.Post("/upload", h.Upload)

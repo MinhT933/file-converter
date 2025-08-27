@@ -14,6 +14,7 @@ type Handler struct {
 	AsynqClient  *asynq.Client
 	AuthProvider auth.Provider
 	AuthService  *services.AuthService
+	FileService  *services.FileService
 }
 
 // Upload handles file upload

@@ -43,6 +43,8 @@ func main() {
 
 	userRepo := repositories.NewUserRepository(db)
 	authService := services.NewAuthService(userRepo)
+	conversionRepo := repositories.NewConversionRepository(db)
+	fileService := services.NewFileService(conversionRepo)
 
 	authProvider := auth.NewFirebaseProvider(fb.Auth)
 
@@ -69,7 +71,7 @@ func main() {
 
 	app.Get("/swagger/*", fiberSwagger.HandlerDefault)
 
-	api.RegisterRoutes(app, cfg, asynqClient, authProvider, authService)
+	api.RegisterRoutes(app, cfg, asynqClient, authProvider, authService, fileService)
 
 	log.Fatal(app.ListenTLS(
 		":8080",
@@ -77,7 +79,7 @@ func main() {
 		"127.0.0.1-key.pem",
 	))
 
-	if err := app.Listen(":" + cfg.PortHTTP); err != nil {
-		panic(err)
-	}
+	// if err := app.Listen(":" + cfg.PortHTTP); err != nil {
+	// 	panic(err)
+	// }
 }
