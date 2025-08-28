@@ -1,181 +1,195 @@
 🧠 Golang Service - Server & Worker 
 
-![Go Version](https://img.shields.io/badge/Go-1.20%2B-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
-![Docker Support](https://img.shields.io/badge/Docker-Supported-blue)
+> Bootstrap: [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app) (App Router + TypeScript)
 
-This is a monorepo Go service with two main components:
+## ⚡ Quick Start
 
-- 🌐 `cmd/server`: the HTTP/WebSocket server  
-- ⚙️ `cmd/worker`: the background job processor (e.g., consuming from queue)
+**Requirements**
+
+* Node.js ≥ 18 (LTS recommended)
+* Package manager: **pnpm** (khuyến nghị) / npm / yarn
+
+```bash
+# install deps
+pnpm i
+
+# run dev server
+pnpm dev
+# open http://localhost:3000
+```
+
+👉 Trang mặc định nằm ở `app/page.tsx`. Lưu file là trình duyệt tự reload.
 
 ---
 
-## 📚 Table of Contents
+## 🔑 Environment Variables
 
-- [🚀 Quick Start](#-quick-start)
-- [🛠️ Run Locally](#️-run-locally)
-- [🧱 Build Binaries](#-build-binaries)
-- [🐳 Run with Docker](#-run-with-docker-optional)
-- [🧪 Running Tests](#-running-tests)
-- [📁 Project Structure](#-project-structure)
-- [🔑 Certificate Generation (TLS)](#-certificate-generation-for-httpstls)
-- [📌 Requirements](#-requirements)
-- [✍️ Author](#-author)
-- [📝 License](#-license)
+Tạo file **`.env.local`** (không commit) từ mẫu dưới đây:
 
----
-## 📃Introduction
-This project follow Domain-Driven Design (DDD). 
+```env
+# Public (được gửi xuống client)
+NEXT_PUBLIC_API_URL=http://localhost:8080
 
-## 🚀 Quick Start
-
-### 1. Clone this repo
-
-```bash
-git clone https://github.com/yourname/your-repo.git
-cd your-repo
+# Private (chỉ dùng ở server)
+API_SECRET=change-me
 ```
 
-### 2. Install Go dependencies
-
-```bash
-go mod tidy
-```
+> Next.js tự động đọc `.env.local`. Không cần cấu hình thêm.
 
 ---
 
-## 🛠️ Run Locally
-
-### 👉 Run Server
-
-```bash
-make run-server
-```
-
-Runs `cmd/server/main.go`
-
-### 👉 Run Worker
-
-```bash
-make run-worker
-```
-
-Runs `cmd/worker/main.go`
-
----
-
-## 🧱 Build Binaries
-
-Build static binaries into `./bin`:
-
-```bash
-make build-server
-make build-worker
-```
-
-You can run them with:
-
-```bash
-./bin/server
-./bin/worker
-```
-
----
-
-## 🧹 Clean Build Artifacts
-
-```bash
-make clean
-```
-
----
-
-## 🐳 Buit with Docker (Optional)
-
-### ▶️ Build app (server):
-```bash
-docker-compose build --no-cache app
-
-### ▶️ Build work (server):
-``` bash 
-docker-compose build --no-cache worker
-
-## 🐳 Run with Docker (Optional)
-
-If you use Docker, just run:
-
-
-### ▶️ Run app (server):
-
-```bash
-docker-compose run --service-ports app
-
-### ⚙️ Run worker:
-
-docker-compose run --service-ports worker
----
-
-###🔄 Hot-reload trong môi trường phát triển
-## Dự án hỗ trợ hot-reload khi phát triển với Docker:
-```bash
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up app
-
-## 📁 Project Structure
+## 📂 Project Structure
 
 ```
 .
-├── cmd/
-│   ├── server/             # Main API / WebSocket Server
-│   │   └── main.go
-│   └── worker/             # Background Job Processor
-│       └── main.go
-├── internal/               # Business logic, services, core packages
-├── docs/                   # Documentation / OpenAPI / Architecture
-├── Makefile                # Dev helper commands
-├── docker-compose.yml      # Optional Docker support
-├── go.mod / go.sum         # Go modules
-└── README.md               # You're here!
+├── app/                # App Router
+│   ├── layout.tsx
+│   ├── page.tsx
+│   └── (routes ...)
+├── components/         # UI components (Client/Server)
+├── lib/                # helpers, fetchers
+├── public/             # static assets
+├── styles/             # global.css / tailwind.css (nếu dùng)
+├── next.config.mjs
+├── package.json
+└── tsconfig.json
 ```
 
 ---
 
-## 📌 Requirements
+## 🧪 Scripts
 
-- Go 1.20+
-- (Optional) Docker & Docker Compose
+Các lệnh phổ biến trong `package.json` (tuỳ project có thể khác):
+
+```jsonc
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  }
+}
+```
+
+* `pnpm dev` – chạy dev server ở `localhost:3000`
+* `pnpm build` – build production (tạo `.next`)
+* `pnpm start` – chạy build đã tạo (production)
+* `pnpm lint` – ESLint
+* `pnpm typecheck` – kiểm tra TypeScript
 
 ---
 
-## 🧪 Running Tests
+## 🎨 Fonts & Assets
+
+Project dùng [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) để tự động tối ưu font **Geist** của Vercel.
+
+```tsx
+// app/layout.tsx
+import { Geist, Geist_Mono } from "next/font/google" // hoặc from "geist/font"
+```
+
+> Có thể thay bằng font khác nếu muốn; `next/font` sẽ tự tạo CSS và preload hợp lý.
+
+---
+
+## 🐳 Docker (tùy chọn)
+
+Chạy nhanh bằng Docker (production-like):
+
+```yaml
+# docker-compose.yml
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+```
+
+**Dockerfile** tối giản:
+
+```dockerfile
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY package.json pnpm-lock.yaml* yarn.lock* package-lock.json* ./
+RUN corepack enable && pnpm i --frozen-lockfile || npm ci || yarn --frozen-lockfile
+
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN pnpm build || npm run build || yarn build
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json ./package.json
+EXPOSE 3000
+CMD ["node", "node_modules/next/dist/bin/next", "start", "-p", "3000"]
+```
+
+Chạy:
 
 ```bash
-go test ./...
+docker compose up --build
 ```
 
 ---
 
-## ✍️ Author
+## 🚀 Deploy
 
-Created by [MinhT933](https://github.com/MinhT933) — feel free to contribute or reach out!
+* **Vercel**: đơn giản nhất (import repo, set env, deploy).
+* **Docker**: build image theo Dockerfile ở trên, push lên registry, chạy `docker run -p 3000:3000 <image>`.
+
+> Lưu ý set biến môi trường production (`NODE_ENV=production`) & cung cấp `.env` tương ứng.
 
 ---
 
-## 📝 License
+## ✅ Code Quality
 
-MIT License. See `LICENSE` file for details.
+* ESLint: cấu hình sẵn với Next.js
+* Prettier: khuyến nghị bật trong editor
+* TypeScript: chạy `pnpm typecheck` trước khi commit
 
+**VS Code (gợi ý)**
 
-### 🔑 Certificate Generation (for HTTPS/TLS)
+```jsonc
+// .vscode/settings.json
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "typescript.tsdk": "node_modules/typescript/lib"
+}
+```
 
-- **Dev:**  
-  Tự động tạo certificate khi build image:
-  ```bash
-     docker-compose build --no-cache --build-arg GENERATE_CERT=true app
-  ```
+---
 
-- **Prod:**  
-  Không tạo certificate, bạn nên mount file cert/key từ ngoài vào container:
-  ```bash
-     docker-compose build --no-cache --build-arg GENERATE_CERT=false app
-  ```
+## 🛠️ Troubleshooting
+
+* **Cổng 3000 bận**: đổi cổng `pnpm dev -- -p 3001`
+* **Font không tải**: kiểm tra cấu hình `next/font` hoặc CSP
+* **API lỗi CORS**: bật CORS ở backend hoặc dùng proxy (`NEXT_PUBLIC_API_URL`)
+* **Build chậm**: xoá `.next`, `node_modules`, cài lại dep
+
+```bash
+rm -rf .next node_modules
+pnpm i && pnpm build
+```
+
+---
+
+## 📄 License
+
+MIT (hoặc cập nhật theo license bạn dùng)
+
+---
+
+### Notes
+
+* README này đã tinh gọn nội dung mặc định, bổ sung env, Docker, và guideline quality.
+* Thay `NEXT_PUBLIC_API_URL` theo backend của bạn.
