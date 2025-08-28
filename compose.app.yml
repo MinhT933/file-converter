@@ -1,0 +1,51 @@
+name: fileconv-app
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      DEV_MODE: "true"
+      REDIS_ADDR: "redis:6379"
+      NATS_URL: "nats://nats:4222"
+      DB_HOST: "postgres"
+      DB_PORT: "5432"
+      DB_USER: "postgres"
+      DB_PASSWORD: "123"
+      DB_NAME: "file_converter"
+    # Lưu ý: depends_on KHÔNG hoạt động xuyên project, nên app cần tự retry kết nối
+    volumes:
+      - .:/app # dev: 1 mount là đủ, bỏ các mount lẻ để tránh bị “đè”
+      - ./entrypoint.sh:/app/entrypoint.sh
+      - ./firebase-creds.json:/app/firebase-creds.json:ro
+    networks: [shared-net]
+    entrypoint:
+      ["bash", "-c", "chmod +x /app/entrypoint.sh && /app/entrypoint.sh"]
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    env_file:
+      - .env
+    environment:
+      REDIS_ADDR: "redis:6379"
+      NATS_URL: "nats://nats:4222"
+      DB_HOST: "postgres"
+      DB_PORT: "5432"
+      DB_USER: "postgres"
+      DB_PASSWORD: "123"
+      DB_NAME: "file_converter"
+    networks: [shared-net]
+    volumes:
+      - .:/app
+
+networks:
+  shared-net:
+    external: true
+    name: fileconv-net

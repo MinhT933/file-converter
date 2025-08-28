@@ -1,23 +1,28 @@
+# ---------- Builder ----------
 FROM golang:1.24-bullseye AS builder
+WORKDIR /src
 
-WORKDIR /app
-COPY go.mod ./
-RUN go mod download
+# Cache module
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+
+# Copy source
 COPY . .
 
+# Build binary ra thư mục riêng (không phụ thuộc /app)
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -o /out/myapp-worker ./cmd/worker
 
-# Build server và worker với tên khác nhau
-RUN go build -o myapp-worker ./cmd/worker
+# ---------- Runtime ----------
+FROM debian:bullseye-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates wkhtmltopdf fontconfig fonts-dejavu \
+      xvfb libxrender1 libxext6 libjpeg62-turbo openssl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Stage 2: Runtime image for worker
-FROM debian:bullseye-slim AS worker-runtime
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates wkhtmltopdf fontconfig fonts-dejavu xvfb libxrender1 libxext6 libjpeg62-turbo openssl && \
-    rm -rf /var/lib/apt/lists/*
+# Copy binary vào đúng nơi ENTRYPOINT sẽ gọi
+COPY --from=builder /out/myapp-worker /usr/local/bin/myapp-worker
 
-# Copy worker binary và các file cần thiết
-WORKDIR /app
-COPY --from=builder /app/myapp-worker .
-COPY .env .env
-
-CMD ["./myapp-worker"]
+# Không COPY .env vào image — dùng env_file trong Compose
+ENTRYPOINT ["/usr/local/bin/myapp-worker"]

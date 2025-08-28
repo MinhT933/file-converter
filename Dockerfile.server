@@ -1,3 +1,4 @@
+#Dockerfile.server
 FROM golang:1.24-bullseye AS builder
 WORKDIR /app
 
@@ -45,14 +46,11 @@ ENV PATH="/usr/local/go/bin:/go/bin:${PATH}"
 # ⓔ File .env & script
 COPY .env .
 COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
 
-# (tùy) sinh cert test HTTPS
-ARG GENERATE_CERT=true
-RUN if [ "$GENERATE_CERT" = "true" ]; then \
-      openssl req -x509 -newkey rsa:4096 -keyout 127.0.0.1-key.pem \
-        -out 127.0.0.1.pem -days 365 -nodes -subj "/CN=127.0.0.1"; \
-    fi
+# Fix line endings cho Windows và set executable
+RUN sed -i 's/\r$//' /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
+
 
 EXPOSE 8080
 ENTRYPOINT ["/app/entrypoint.sh"]
