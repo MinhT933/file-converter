@@ -1,195 +1,247 @@
-🧠 Golang Service - Server & Worker 
+# 🧠 Golang Service — Server & Worker
 
-> Bootstrap: [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app) (App Router + TypeScript)
+![Go Version](https://img.shields.io/badge/Go-1.22%2B-blue)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Docker Support](https://img.shields.io/badge/Docker-Supported-blue)
+
+Monorepo Golang gồm hai thành phần chính:
+
+- 🌐 `cmd/server`: HTTP/WebSocket API server
+- ⚙️ `cmd/worker`: background job processor (consumes from queue)
+
+Repo áp dụng tư duy Domain‑Driven Design (DDD) trong `internal/`.
+
+---
 
 ## ⚡ Quick Start
 
-**Requirements**
+### 1) Yêu cầu
 
-* Node.js ≥ 18 (LTS recommended)
-* Package manager: **pnpm** (khuyến nghị) / npm / yarn
+- **Go ≥ 1.22** (LTS)
+- **Docker** & **Docker Compose v2** (lệnh `docker compose`)
+- (khuyên dùng) **pnpm/yarn/npm** nếu có front-end phụ
+
+### 2) Cài deps
 
 ```bash
-# install deps
-pnpm i
-
-# run dev server
-pnpm dev
-# open http://localhost:3000
+go mod tidy
 ```
 
-👉 Trang mặc định nằm ở `app/page.tsx`. Lưu file là trình duyệt tự reload.
+### 3) Chạy local (không Docker)
+
+```bash
+make run-server   # chạy server: cmd/server/main.go
+make run-worker   # chạy worker: cmd/worker/main.go
+```
+
+Mặc định server bind `:8080`. Mở: `http://localhost:8080/health` hoặc `http://localhost:8080/swagger/index.html` (nếu đã mount swagger).
 
 ---
 
-## 🔑 Environment Variables
+## 🧱 Build Binaries
 
-Tạo file **`.env.local`** (không commit) từ mẫu dưới đây:
+Build ra thư mục `./bin`:
+
+```bash
+make build-server
+make build-worker
+# chạy thử
+./bin/server
+./bin/worker
+```
+
+Dùng flags phiên bản (đã set trong Makefile): `-ldflags "-X main.version=... -X main.commit=... -X main.date=..."`.
+
+---
+
+## 🔧 Environment Variables
+
+Tạo file `.env` (hoặc `.env.local`) ở root:
 
 ```env
-# Public (được gửi xuống client)
-NEXT_PUBLIC_API_URL=http://localhost:8080
-
-# Private (chỉ dùng ở server)
-API_SECRET=change-me
+# Server
+PORT=8080
+USE_TLS=false
+# DB
+DB_HOST=postgres
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=123
+DB_NAME=file_converter
+# Redis & NATS
+REDIS_ADDR=redis:6379
+NATS_URL=nats://nats:4222
 ```
 
-> Next.js tự động đọc `.env.local`. Không cần cấu hình thêm.
+> **Lưu ý**: Không COPY `.env` vào image. Compose đã dùng `env_file: .env`.
 
 ---
 
-## 📂 Project Structure
+## 🐳 Docker Dev & Runtime
+
+Repo tách **infra** và **app** theo 2 file Compose:
+
+- `compose.infra.yml` → Redis, NATS, Postgres, (PgAdmin)
+- `compose.app.yml` → app (server) + worker
+
+### 0) Tạo external network (1 lần)
+
+```bash
+docker network create fileconv-net || true
+```
+
+### 1) Bật hạ tầng (infra)
+
+```bash
+docker compose -f compose.infra.yml up -d
+# hoặc chỉ 1 vài service: redis nats postgres
+```
+
+### 2) Dev (hot‑reload bằng Air)
+
+> `Dockerfile.server` có stage `dev`; `compose.app.yml` đặt `target: ${TARGET:-dev}`
+
+```bash
+make app-up TARGET=dev
+# xem log
+docker compose -f compose.app.yml logs -f app worker
+```
+
+Mở `http://localhost:8080/health` hoặc `http://localhost:8080/swagger/index.html`.
+
+### 3) Runtime (ổn định, không hot‑reload)
+
+> Dùng stage runtime `server-runtime` (binary ở `/usr/local/bin`)
+
+```bash
+make app-up TARGET=server-runtime
+```
+
+### 4) Scale worker
+
+```bash
+make scale-worker N=3
+```
+
+### 5) Tắt services
+
+```bash
+make down-all      # tắt cả app + infra
+# hoặc riêng lẻ
+make app-down
+make infra-down
+```
+
+---
+
+## 🔄 Hot‑reload (Air)
+
+Cấu hình `.air.server.toml` tối giản ở root:
+
+```toml
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o /usr/local/bin/myapp-server ./cmd/server"
+bin = "/usr/local/bin/myapp-server"
+delay = 1000
+include_dir = ["cmd","internal"]
+exclude_dir = ["docs","vendor","node_modules",".git",".air*","tmp"]
+
+[log]
+time = true
+```
+
+> Stage `dev` sẽ `CMD ["air", "-c", ".air.server.toml"]`.
+
+---
+
+## 📁 Project Structure
 
 ```
 .
-├── app/                # App Router
-│   ├── layout.tsx
-│   ├── page.tsx
-│   └── (routes ...)
-├── components/         # UI components (Client/Server)
-├── lib/                # helpers, fetchers
-├── public/             # static assets
-├── styles/             # global.css / tailwind.css (nếu dùng)
-├── next.config.mjs
-├── package.json
-└── tsconfig.json
+├── cmd/
+│   ├── server/
+│   │   └── main.go
+│   └── worker/
+│       └── main.go
+├── internal/            # domain, services, repositories, usecases
+├── docs/                # swagger docs (nếu dùng swag)
+├── Dockerfile.server    # multi-stage: builder, dev, server-runtime
+├── Dockerfile.worker    # multi-stage: builder, runtime
+├── compose.infra.yml    # redis, nats, postgres, pgadmin
+├── compose.app.yml      # app + worker (dev/prod via build.target)
+├── entrypoint.sh        # start server (server-runtime)
+├── Makefile             # lệnh tiện dụng (dev/prod, scale, logs,...)
+├── go.mod / go.sum
+└── README.md
 ```
 
 ---
 
-## 🧪 Scripts
+## 🧪 Tests
 
-Các lệnh phổ biến trong `package.json` (tuỳ project có thể khác):
+```bash
+go test ./...
+```
 
-```jsonc
-{
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit"
-  }
+---
+
+## 🧰 Swagger (tuỳ chọn)
+
+Enable routes (ví dụ Gin):
+
+```go
+import swaggerFiles "github.com/swaggo/files"
+import ginSwagger "github.com/swaggo/gin-swagger"
+r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+```
+
+Generate docs (local hoặc trong builder stage):
+
+```bash
+make swag   # hoặc: swag init -g cmd/server/main.go --parseInternal --parseDependency
+```
+
+---
+
+## 🔐 HTTPS/TLS (tuỳ chọn)
+
+Trong code:
+
+```go
+useTLS := os.Getenv("USE_TLS") == "true"
+if useTLS {
+    r.RunTLS(":8080", "server.crt", "server.key")
+} else {
+    r.Run(":8080") // 0.0.0.0:8080
 }
 ```
 
-* `pnpm dev` – chạy dev server ở `localhost:3000`
-* `pnpm build` – build production (tạo `.next`)
-* `pnpm start` – chạy build đã tạo (production)
-* `pnpm lint` – ESLint
-* `pnpm typecheck` – kiểm tra TypeScript
-
----
-
-## 🎨 Fonts & Assets
-
-Project dùng [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) để tự động tối ưu font **Geist** của Vercel.
-
-```tsx
-// app/layout.tsx
-import { Geist, Geist_Mono } from "next/font/google" // hoặc from "geist/font"
-```
-
-> Có thể thay bằng font khác nếu muốn; `next/font` sẽ tự tạo CSS và preload hợp lý.
-
----
-
-## 🐳 Docker (tùy chọn)
-
-Chạy nhanh bằng Docker (production-like):
+Trong Compose (tắt TLS ở dev):
 
 ```yaml
-# docker-compose.yml
-services:
-  web:
-    build: .
-    ports:
-      - "3000:3000"
-    env_file:
-      - .env.local
-```
-
-**Dockerfile** tối giản:
-
-```dockerfile
-FROM node:20-alpine AS deps
-WORKDIR /app
-COPY package.json pnpm-lock.yaml* yarn.lock* package-lock.json* ./
-RUN corepack enable && pnpm i --frozen-lockfile || npm ci || yarn --frozen-lockfile
-
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-RUN pnpm build || npm run build || yarn build
-
-FROM node:20-alpine AS runner
-WORKDIR /app
-ENV NODE_ENV=production
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
-EXPOSE 3000
-CMD ["node", "node_modules/next/dist/bin/next", "start", "-p", "3000"]
-```
-
-Chạy:
-
-```bash
-docker compose up --build
+environment:
+  USE_TLS: "false"
 ```
 
 ---
 
-## 🚀 Deploy
+## 🛟 Troubleshooting
 
-* **Vercel**: đơn giản nhất (import repo, set env, deploy).
-* **Docker**: build image theo Dockerfile ở trên, push lên registry, chạy `docker run -p 3000:3000 <image>`.
-
-> Lưu ý set biến môi trường production (`NODE_ENV=production`) & cung cấp `.env` tương ứng.
-
----
-
-## ✅ Code Quality
-
-* ESLint: cấu hình sẵn với Next.js
-* Prettier: khuyến nghị bật trong editor
-* TypeScript: chạy `pnpm typecheck` trước khi commit
-
-**VS Code (gợi ý)**
-
-```jsonc
-// .vscode/settings.json
-{
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "typescript.tsdk": "node_modules/typescript/lib"
-}
-```
+- **`Empty reply from server`**: thường do gọi HTTP vào cổng đang chạy **HTTPS** hoặc server chưa bind `0.0.0.0:8080`. Thử `https://localhost:8080/health` hoặc đảm bảo `r.Run(":8080")`.
+- **`no such file or directory: ./myapp-worker`**: bind‑mount đè binary. Đã fix bằng cách đặt binary ở `/usr/local/bin` và không mount đè thư mục chứa binary.
+- **`target stage "dev" could not be found`**: Dockerfile không có stage `dev`. Dùng `TARGET=server-runtime` hoặc cập nhật Dockerfile như README này.
+- **Orphan containers**: khác project name. Thêm `name:` vào mỗi compose file (vd. `fileconv-infra`, `fileconv-app`) và chạy `--remove-orphans`.
+- **CRLF script**: trên Windows dùng `sed -i 's/\r$//' entrypoint.sh` (đã có trong Dockerfile.server) để tránh lỗi dòng mới.
 
 ---
 
-## 🛠️ Troubleshooting
+## ✍️ Author
 
-* **Cổng 3000 bận**: đổi cổng `pnpm dev -- -p 3001`
-* **Font không tải**: kiểm tra cấu hình `next/font` hoặc CSP
-* **API lỗi CORS**: bật CORS ở backend hoặc dùng proxy (`NEXT_PUBLIC_API_URL`)
-* **Build chậm**: xoá `.next`, `node_modules`, cài lại dep
+Created by **[MinhT933](https://github.com/MinhT933)** — contributions welcome!
 
-```bash
-rm -rf .next node_modules
-pnpm i && pnpm build
-```
+## 📝 License
 
----
-
-## 📄 License
-
-MIT (hoặc cập nhật theo license bạn dùng)
-
----
-
-### Notes
-
-* README này đã tinh gọn nội dung mặc định, bổ sung env, Docker, và guideline quality.
-* Thay `NEXT_PUBLIC_API_URL` theo backend của bạn.
+MIT — see `LICENSE`.
