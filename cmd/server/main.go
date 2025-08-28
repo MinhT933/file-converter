@@ -71,13 +71,9 @@ func main() {
 
 	api.RegisterRoutes(app, cfg, asynqClient, authProvider, authService)
 
-	log.Fatal(app.ListenTLS(
-		":8080",
-		"127.0.0.1.pem",
-		"127.0.0.1-key.pem",
-	))
-
 	if err := app.Listen(":" + cfg.PortHTTP); err != nil {
 		panic(err)
 	}
+
+    log.Println("Truy cập Swagger: http://localhost:8080/swagger/index.html")
 }
