@@ -157,7 +157,6 @@ REMOTE
   post {
     always {
       script {
-        // cleanup an toàn (không làm fail build)
         sh 'docker system prune -f || true'
         sh 'rm -rf ./* || true'
       }
