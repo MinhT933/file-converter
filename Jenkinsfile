@@ -169,13 +169,21 @@ pipeline {
                     echo "❌ Build Failed!"
                     
                     // Đơn giản hóa Discord notification
-                    withCredentials([string(credentialsId: 'DISCORD_WEBHOOK_URL', variable: 'WEBHOOK_URL')]) {
+                    withCredentials([string(credentialsId: 'DISCORD_WEBHOOK_URL', variable: 'DISCORD_WEBHOOK_URL')]) {
                         sh '''
-                            curl -H "Content-Type: application/json" \\
-                            -X POST \\
-                            -d '{"username": "Jenkins CI/CD", "embeds": [{"title": "❌ Build Failed!", "description": "Build #''' + env.BUILD_NUMBER + ''' failed for job ''' + env.JOB_NAME + '''", "color": 16711680}]}' \\
-                            "$WEBHOOK_URL"
-                        '''
+                            curl -H "Content-Type: application/json" \
+                            -X POST \
+                            -d '{
+                            "sender": "jenkins",
+                            "username": "Jenkins CI/CD",
+                            "embeds": [{
+                                "title": "❌ Build Failed!",
+                                "description": "Build #''' + env.BUILD_NUMBER + ''' failed for job ''' + env.JOB_NAME + '''",
+                                "color": 16711680
+                            }]
+                            }' \
+                            "$DISCORD_WEBHOOK_URL"
+                        ''' 
                     }
                 } catch (Exception e) {
                     echo "Failed to send Discord notification: ${e.getMessage()}"
