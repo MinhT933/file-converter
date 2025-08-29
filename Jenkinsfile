@@ -89,7 +89,6 @@ pipeline {
       steps {
         withCredentials([
           file(credentialsId: 'deploy-env',        variable: 'DEPLOY_ENV'),
-          file(credentialsId: 'envfile-portfolio', variable: 'ENVFILE')
         ]) {
           sh '''#!/usr/bin/env bash
 set -Eeuo pipefail
