@@ -1,153 +1,186 @@
-🧠 Golang Service - Server & Worker 
+# 🧠 Golang Service — Server & Worker
 
-![Go Version](https://img.shields.io/badge/Go-1.20%2B-blue)
+![Go Version](https://img.shields.io/badge/Go-1.22%2B-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Docker Support](https://img.shields.io/badge/Docker-Supported-blue)
 
-This is a monorepo Go service with two main components:
+Monorepo Golang gồm hai thành phần chính:
 
-- 🌐 `cmd/server`: the HTTP/WebSocket server  
-- ⚙️ `cmd/worker`: the background job processor (e.g., consuming from queue)
+- 🌐 `cmd/server`: HTTP/WebSocket API server
+- ⚙️ `cmd/worker`: background job processor (consumes from queue)
 
----
-
-## 📚 Table of Contents
-
-- [🚀 Quick Start](#-quick-start)
-- [🛠️ Run Locally](#️-run-locally)
-- [🧱 Build Binaries](#-build-binaries)
-- [🐳 Run with Docker](#-run-with-docker-optional)
-- [🧪 Running Tests](#-running-tests)
-- [📁 Project Structure](#-project-structure)
-- [🔑 Certificate Generation (TLS)](#-certificate-generation-for-httpstls)
-- [📌 Requirements](#-requirements)
-- [✍️ Author](#-author)
-- [📝 License](#-license)
+Repo áp dụng tư duy Domain‑Driven Design (DDD) trong `internal/`.
 
 ---
-## 📃Introduction
-This project follow Domain-Driven Design (DDD). 
 
-## 🚀 Quick Start
+## ⚡ Quick Start
 
-### 1. Clone this repo
+### 1) Yêu cầu
 
-```bash
-git clone https://github.com/yourname/your-repo.git
-cd your-repo
-```
+- **Go ≥ 1.22** (LTS)
+- **Docker** & **Docker Compose v2** (lệnh `docker compose`)
+- (khuyên dùng) **pnpm/yarn/npm** nếu có front-end phụ
 
-### 2. Install Go dependencies
+### 2) Cài deps
 
 ```bash
 go mod tidy
 ```
 
----
-
-## 🛠️ Run Locally
-
-### 👉 Run Server
+### 3) Chạy local (không Docker)
 
 ```bash
-make run-server
+make run-server   # chạy server: cmd/server/main.go
+make run-worker   # chạy worker: cmd/worker/main.go
 ```
 
-Runs `cmd/server/main.go`
-
-### 👉 Run Worker
-
-```bash
-make run-worker
-```
-
-Runs `cmd/worker/main.go`
+Mặc định server bind `:8080`. Mở: `http://localhost:8080/health` hoặc `http://localhost:8080/swagger/index.html` (nếu đã mount swagger).
 
 ---
 
 ## 🧱 Build Binaries
 
-Build static binaries into `./bin`:
+Build ra thư mục `./bin`:
 
 ```bash
 make build-server
 make build-worker
-```
-
-You can run them with:
-
-```bash
+# chạy thử
 ./bin/server
 ./bin/worker
 ```
 
+Dùng flags phiên bản (đã set trong Makefile): `-ldflags "-X main.version=... -X main.commit=... -X main.date=..."`.
+
 ---
 
-## 🧹 Clean Build Artifacts
+## 🔧 Environment Variables
+
+Tạo file `.env` (hoặc `.env.local`) ở root:
+
+```env
+# Server
+PORT=8080
+USE_TLS=false
+# DB
+DB_HOST=postgres
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=123
+DB_NAME=file_converter
+# Redis & NATS
+REDIS_ADDR=redis:6379
+NATS_URL=nats://nats:4222
+```
+
+> **Lưu ý**: Không COPY `.env` vào image. Compose đã dùng `env_file: .env`.
+
+---
+
+## 🐳 Docker Dev & Runtime
+
+Repo tách **infra** và **app** theo 2 file Compose:
+
+- `compose.infra.yml` → Redis, NATS, Postgres, (PgAdmin)
+- `compose.app.yml` → app (server) + worker
+
+### 0) Tạo external network (1 lần)
 
 ```bash
-make clean
+docker network create fileconv-net || true
+```
+
+### 1) Bật hạ tầng (infra)
+
+```bash
+docker compose -f compose.infra.yml up -d
+# hoặc chỉ 1 vài service: redis nats postgres
+```
+
+### 2) Dev (hot‑reload bằng Air)
+
+> `Dockerfile.server` có stage `dev`; `compose.app.yml` đặt `target: ${TARGET:-dev}`
+
+```bash
+make app-up TARGET=dev
+# xem log
+docker compose -f compose.app.yml logs -f app worker
+```
+
+Mở `http://localhost:8080/health` hoặc `http://localhost:8080/swagger/index.html`.
+
+### 3) Runtime (ổn định, không hot‑reload)
+
+> Dùng stage runtime `server-runtime` (binary ở `/usr/local/bin`)
+
+```bash
+make app-up TARGET=server-runtime
+```
+
+### 4) Scale worker
+
+```bash
+make scale-worker N=3
+```
+
+### 5) Tắt services
+
+```bash
+make down-all      # tắt cả app + infra
+# hoặc riêng lẻ
+make app-down
+make infra-down
 ```
 
 ---
 
-## 🐳 Buit with Docker (Optional)
+## 🔄 Hot‑reload (Air)
 
-### ▶️ Build app (server):
-```bash
-docker-compose build --no-cache app
+Cấu hình `.air.server.toml` tối giản ở root:
 
-### ▶️ Build work (server):
-``` bash 
-docker-compose build --no-cache worker
+```toml
+root = "."
+tmp_dir = "tmp"
 
-## 🐳 Run with Docker (Optional)
+[build]
+cmd = "go build -o /usr/local/bin/myapp-server ./cmd/server"
+bin = "/usr/local/bin/myapp-server"
+delay = 1000
+include_dir = ["cmd","internal"]
+exclude_dir = ["docs","vendor","node_modules",".git",".air*","tmp"]
 
-If you use Docker, just run:
+[log]
+time = true
+```
 
+> Stage `dev` sẽ `CMD ["air", "-c", ".air.server.toml"]`.
 
-### ▶️ Run app (server):
-
-```bash
-docker-compose run --service-ports app
-
-### ⚙️ Run worker:
-
-docker-compose run --service-ports worker
 ---
-
-###🔄 Hot-reload trong môi trường phát triển
-## Dự án hỗ trợ hot-reload khi phát triển với Docker:
-```bash
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up app
 
 ## 📁 Project Structure
 
 ```
 .
 ├── cmd/
-│   ├── server/             # Main API / WebSocket Server
+│   ├── server/
 │   │   └── main.go
-│   └── worker/             # Background Job Processor
+│   └── worker/
 │       └── main.go
-├── internal/               # Business logic, services, core packages
-├── docs/                   # Documentation / OpenAPI / Architecture
-├── Makefile                # Dev helper commands
-├── docker-compose.yml      # Optional Docker support
-├── go.mod / go.sum         # Go modules
-└── README.md               # You're here!
+├── internal/            # domain, services, repositories, usecases
+├── docs/                # swagger docs (nếu dùng swag)
+├── Dockerfile.server    # multi-stage: builder, dev, server-runtime
+├── Dockerfile.worker    # multi-stage: builder, runtime
+├── compose.infra.yml    # redis, nats, postgres, pgadmin
+├── compose.app.yml      # app + worker (dev/prod via build.target)
+├── entrypoint.sh        # start server (server-runtime)
+├── Makefile             # lệnh tiện dụng (dev/prod, scale, logs,...)
+├── go.mod / go.sum
+└── README.md
 ```
 
 ---
 
-## 📌 Requirements
-
-- Go 1.20+
-- (Optional) Docker & Docker Compose
-
----
-
-## 🧪 Running Tests
+## 🧪 Tests
 
 ```bash
 go test ./...
@@ -155,27 +188,60 @@ go test ./...
 
 ---
 
-## ✍️ Author
+## 🧰 Swagger (tuỳ chọn)
 
-Created by [MinhT933](https://github.com/MinhT933) — feel free to contribute or reach out!
+Enable routes (ví dụ Gin):
+
+```go
+import swaggerFiles "github.com/swaggo/files"
+import ginSwagger "github.com/swaggo/gin-swagger"
+r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+```
+
+Generate docs (local hoặc trong builder stage):
+
+```bash
+make swag   # hoặc: swag init -g cmd/server/main.go --parseInternal --parseDependency
+```
 
 ---
 
+## 🔐 HTTPS/TLS (tuỳ chọn)
+
+Trong code:
+
+```go
+useTLS := os.Getenv("USE_TLS") == "true"
+if useTLS {
+    r.RunTLS(":8080", "server.crt", "server.key")
+} else {
+    r.Run(":8080") // 0.0.0.0:8080
+}
+```
+
+Trong Compose (tắt TLS ở dev):
+
+```yaml
+environment:
+  USE_TLS: "false"
+```
+
+---
+
+## 🛟 Troubleshooting
+
+- **`Empty reply from server`**: thường do gọi HTTP vào cổng đang chạy **HTTPS** hoặc server chưa bind `0.0.0.0:8080`. Thử `https://localhost:8080/health` hoặc đảm bảo `r.Run(":8080")`.
+- **`no such file or directory: ./myapp-worker`**: bind‑mount đè binary. Đã fix bằng cách đặt binary ở `/usr/local/bin` và không mount đè thư mục chứa binary.
+- **`target stage "dev" could not be found`**: Dockerfile không có stage `dev`. Dùng `TARGET=server-runtime` hoặc cập nhật Dockerfile như README này.
+- **Orphan containers**: khác project name. Thêm `name:` vào mỗi compose file (vd. `fileconv-infra`, `fileconv-app`) và chạy `--remove-orphans`.
+- **CRLF script**: trên Windows dùng `sed -i 's/\r$//' entrypoint.sh` (đã có trong Dockerfile.server) để tránh lỗi dòng mới.
+
+---
+
+## ✍️ Author
+
+Created by **[MinhT933](https://github.com/MinhT933)** — contributions welcome!
+
 ## 📝 License
 
-MIT License. See `LICENSE` file for details.
-
-
-### 🔑 Certificate Generation (for HTTPS/TLS)
-
-- **Dev:**  
-  Tự động tạo certificate khi build image:
-  ```bash
-     docker-compose build --no-cache --build-arg GENERATE_CERT=true app
-  ```
-
-- **Prod:**  
-  Không tạo certificate, bạn nên mount file cert/key từ ngoài vào container:
-  ```bash
-     docker-compose build --no-cache --build-arg GENERATE_CERT=false app
-  ```
+MIT — see `LICENSE`.
