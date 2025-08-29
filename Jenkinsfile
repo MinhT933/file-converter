@@ -8,7 +8,7 @@ def JF_MARKER = "v2025-08-29-4"
 // LƯU Ý: API của bạn yêu cầu `sender` là OBJECT và có `id`
 def notifyWebhook(String title, String description, int color) {
   def payload = JsonOutput.toJson([
-    sender  : [ id: 'jenkins', name: 'Jenkins CI/CD' ], // 👈 có id
+    sender  : [ id: 1 , name: 'Jenkins CI/CD' ], // 👈 có id
     username: 'Jenkins CI/CD',
     embeds  : [[
       title      : title,
