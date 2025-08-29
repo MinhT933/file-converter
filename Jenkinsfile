@@ -1,14 +1,36 @@
 // Jenkinsfile
 import groovy.json.JsonOutput
 
-// Marker để chắc chắn Jenkins đang dùng file mới
-def JF_MARKER = "v2025-08-29-4"
+// Marker để chắc chắn Jenkins dùng file mới
+def JF_MARKER = "v2025-08-29-5"
 
-// === Helper: gửi thông báo tới webhook (proxy nội bộ/Discord) ===
-// LƯU Ý: API của bạn yêu cầu `sender` là OBJECT và có `id`
+// ===== Helper: gửi thông báo tới webhook (proxy nội bộ / Discord proxy) =====
+// API phía bạn đã lần lượt đòi sender.id, sender.login, sender.html_url,...
+// => Gửi luôn object 'sender' theo schema GitHub để khỏi thiếu field.
 def notifyWebhook(String title, String description, int color) {
+  def sender = [
+    id: 1,
+    login: 'jenkins',
+    node_id: 'MDQ6VXNlcjE=',
+    avatar_url: 'https://avatars.githubusercontent.com/u/1?v=4',
+    gravatar_id: '',
+    url: 'https://api.github.com/users/jenkins',
+    html_url: 'https://github.com/jenkins',
+    followers_url: 'https://api.github.com/users/jenkins/followers',
+    following_url: 'https://api.github.com/users/jenkins/following{/other_user}',
+    gists_url: 'https://api.github.com/users/jenkins/gists{/gist_id}',
+    starred_url: 'https://api.github.com/users/jenkins/starred{/owner}{/repo}',
+    subscriptions_url: 'https://api.github.com/users/jenkins/subscriptions',
+    organizations_url: 'https://api.github.com/users/jenkins/orgs',
+    repos_url: 'https://api.github.com/users/jenkins/repos',
+    events_url: 'https://api.github.com/users/jenkins/events{/privacy}',
+    received_events_url: 'https://api.github.com/users/jenkins/received_events',
+    type: 'User',
+    site_admin: false
+  ]
+
   def payload = JsonOutput.toJson([
-    sender  : [ id: 1 , name: 'Jenkins CI/CD', login:'jenkins', type:'boy' ], // 👈 có id
+    sender  : sender,
     username: 'Jenkins CI/CD',
     embeds  : [[
       title      : title,
@@ -16,6 +38,11 @@ def notifyWebhook(String title, String description, int color) {
       color      : color
     ]]
   ])
+
+  // Log payload (không chứa secret) để debug
+  echo "Webhook payload => ${payload}"
+
+  // Escape để nhét JSON vào single-quoted shell an toàn
   def escaped = payload.replace("'", "'\"'\"'")
 
   withCredentials([string(credentialsId: 'DISCORD_WEBHOOK_URL', variable: 'WEBHOOK_URL')]) {
@@ -156,6 +183,7 @@ REMOTE
   post {
     always {
       script {
+        // Cleanup an toàn (không làm fail build)
         sh 'docker system prune -f || true'
         sh 'rm -rf ./* || true'
       }
