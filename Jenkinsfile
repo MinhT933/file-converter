@@ -1,8 +1,10 @@
-// === Helper: gửi thông báo webhook (Discord / proxy nội bộ) ===
-// - Sinh JSON bằng Groovy (JsonOutput) để tránh lỗi escape
-// - Thêm field `sender` theo schema API của bạn
+// Jenkinsfile
+// Marker để nhận biết file mới đã được Jenkins dùng
+def JF_MARKER = "v2025-08-29-2"
+
+// === Helper: gửi thông báo webhook (Discord hoặc proxy nội bộ yêu cầu `sender`) ===
 def notifyDiscord(String title, String description, int color) {
-  // Tạo payload JSON an toàn
+  // Tạo JSON an toàn bằng JsonOutput
   def payload = groovy.json.JsonOutput.toJson([
     sender  : 'jenkins',
     username: 'Jenkins CI/CD',
@@ -12,8 +14,7 @@ def notifyDiscord(String title, String description, int color) {
       color      : color
     ]]
   ])
-
-  // Escape single-quote để nhét JSON vào chuỗi shell
+  // Escape single-quote để nhét vào chuỗi shell
   def escaped = payload.replace("'", "'\"'\"'")
 
   withCredentials([string(credentialsId: 'DISCORD_WEBHOOK_URL', variable: 'WEBHOOK_URL')]) {
@@ -30,9 +31,7 @@ curl -sS --fail-with-body \\
 pipeline {
   agent any
 
-  triggers {
-    githubPush()
-  }
+  triggers { githubPush() }
 
   options {
     timeout(time: 1, unit: 'HOURS')
@@ -49,6 +48,31 @@ pipeline {
   }
 
   stages {
+    stage('Banner') {
+      steps {
+        echo "JF MARKER: ${JF_MARKER}"
+      }
+    }
+
+    stage('Check Credentials (fail fast)') {
+      steps {
+        script { echo "→ Checking credentials existence…" }
+        // Nếu thiếu cái nào, Jenkins sẽ fail ngay tại đây với lỗi ID not found (dễ thấy & sớm)
+        withCredentials([
+          file(credentialsId: 'deploy-env',        variable: 'DEPLOY_ENV'),
+          file(credentialsId: 'envfile-portfolio', variable: 'ENVFILE')
+        ]) {
+          sh 'echo "OK: deploy-env & envfile-portfolio"'
+        }
+        sshagent(credentials: ['ssh-remote-dev']) {
+          sh 'echo "OK: ssh-remote-dev"'
+        }
+        withCredentials([string(credentialsId: 'DISCORD_WEBHOOK_URL', variable: 'WEBHOOK_URL')]) {
+          sh 'echo "OK: DISCORD_WEBHOOK_URL"'
+        }
+      }
+    }
+
     stage('Checkout') {
       steps {
         checkout scm
@@ -69,9 +93,7 @@ pipeline {
         ]) {
           sh '''#!/usr/bin/env bash
 set -Eeuo pipefail
-set -a
-. "$DEPLOY_ENV"   # defines: REGISTRY_HOST, IMAGE_NAME, APP_NAME, REMOTE_HOST, ...
-set +a
+set -a; . "$DEPLOY_ENV"; set +a
 
 DOCKER_BUILDKIT=1 docker build \
   --secret id=dotenv,src="$ENVFILE" \
@@ -104,7 +126,6 @@ set -Eeuo pipefail
 set -a; . "$DEPLOY_ENV"; set +a
 
 echo "[INFO] Jenkins node: $(hostname) / user: $(whoami)"
-echo "[INFO] SSH client: $(ssh -V 2>&1 || true)"
 echo "[INFO] Target: $REMOTE_USER@$REMOTE_HOST"
 echo "[INFO] Image:  $REGISTRY_HOST/$IMAGE_NAME:$TAG"
 
@@ -134,8 +155,7 @@ REMOTE
   post {
     always {
       script {
-        echo "JF MARKER: v2025-08-29-1" // đánh dấu để chắc chắn Jenkins dùng file mới
-        // Cleanup
+        // cleanup an toàn
         sh 'docker system prune -f || true'
         sh 'rm -rf ./* || true'
       }
