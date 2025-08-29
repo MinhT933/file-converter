@@ -1,113 +1,44 @@
-// Jenkinsfile
-import groovy.json.JsonOutput
-
-// Marker để chắc chắn Jenkins đang dùng file mới
-def JF_MARKER = "v2025-08-29-6"
-
-// ===== Helper: gửi thông báo tới webhook =====
-// - Nếu URL là Discord -> gửi payload Discord chuẩn (trả 204 khi OK)
-// - Nếu không phải Discord -> gửi payload "custom" có trường sender tối thiểu
-def notifyWebhook(String title, String description, int color) {
-  withCredentials([string(credentialsId: 'DISCORD_WEBHOOK_URL', variable: 'WEBHOOK_URL')]) {
-
-    def isDiscord = WEBHOOK_URL.contains('discord.com') || WEBHOOK_URL.contains('discordapp.com')
-    Map payloadMap
-
-    if (isDiscord) {
-      payloadMap = [
-        content : "${title} ${description}",
-        username: "Jenkins CI/CD",
-        embeds  : [[ title: title, description: description, color: color ]]
-      ]
-    } else {
-      payloadMap = [
-        sender  : [ id: 1, login: 'jenkins', html_url: 'https://github.com/jenkins' ],
-        username: 'Jenkins CI/CD',
-        embeds  : [[ title: title, description: description, color: color ]]
-      ]
-    }
-
-    def payload = JsonOutput.toJson(payloadMap)
-    echo "Webhook payload (type=${isDiscord ? 'discord' : 'custom'}) => ${payload}"
-    def escaped = payload.replace("'", "'\"'\"'")
-
-    sh """#!/usr/bin/env bash
-set -Eeuo pipefail
-tmp=\$(mktemp)
-code=\$(curl -sS -o "\$tmp" -w "%{http_code}" \\
-  -H 'Content-Type: application/json' -X POST \\
-  -d '${escaped}' "\$WEBHOOK_URL" || true)
-echo "Webhook HTTP status: \$code"
-if [ "\$code" -ge 400 ]; then
-  echo "Webhook response body:"; sed -n '1,200p' "\$tmp"
-fi
-rm -f "\$tmp"
-"""
-  }
-}
-
 pipeline {
   agent any
 
-  triggers { githubPush() }
-
   options {
-    timeout(time: 1, unit: 'HOURS')
     timestamps()
     ansiColor('xterm')
   }
 
   environment {
-    TAG      = "${env.BRANCH_NAME ?: 'main'}-${env.BUILD_NUMBER}"
-    LABEL    = "${env.BRANCH_NAME ?: 'main'}-${env.BUILD_NUMBER}"
-    VERSION  = "${env.BRANCH_NAME ?: 'main'}-${env.BUILD_NUMBER}"
-    BUILD_ID = "${env.BRANCH_NAME ?: 'main'}-${env.BUILD_NUMBER}"
-    LATEST   = "latest"
+    TAG             = "${env.BRANCH_NAME ?: 'main'}-${env.BUILD_NUMBER}"
+    LATEST_TAG      = 'latest'
+    DOCKER_BUILDKIT = '1'
+    DISCORD_WEBHOOK_URL = credentials("DISCORD_WEBHOOK_URL")
   }
 
   stages {
-
-    stage('Banner') {
-      steps { echo "JF MARKER: ${JF_MARKER}" }
-    }
-
-    stage('Check Credentials (fail fast)') {
-      steps {
-        script { echo "→ Checking credentials..." }
-        withCredentials([file(credentialsId: 'deploy-env', variable: 'DEPLOY_ENV')]) {
-          sh 'echo "OK: deploy-env (secret file exists)"'
-        }
-        sshagent(credentials: ['ssh-remote-dev']) {
-          sh 'echo "OK: ssh-remote-dev (ssh key visible)"'
-        }
-        withCredentials([string(credentialsId: 'DISCORD_WEBHOOK_URL', variable: 'WEBHOOK_URL')]) {
-          sh 'echo "OK: DISCORD_WEBHOOK_URL (secret text bound)"'
-        }
-      }
-    }
 
     stage('Checkout') {
       steps {
         checkout scm
         script {
+          // Lấy commit info từ git
           env.GIT_COMMIT_HASH    = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
           env.GIT_AUTHOR         = sh(script: "git log -1 --pretty=format:'%an'", returnStdout: true).trim()
           env.GIT_COMMIT_MESSAGE = sh(script: "git log -1 --pretty=%s", returnStdout: true).trim()
-          env.GIT_COMMIT_DATE    = sh(script: "git log -1 --pretty=format:'%ad'", returnStdout: true).trim()
         }
       }
     }
 
-    stage('Docker Build') {
+    stage('Docker Build (with BuildKit secret)') {
       steps {
-        withCredentials([file(credentialsId: 'deploy-env', variable: 'DEPLOY_ENV')]) {
+        withCredentials([
+          file(credentialsId: 'deploy-env',         variable: 'DEPLOY_ENV'),
+        ]) {
           sh '''#!/usr/bin/env bash
-set -Eeuo pipefail
-set -a; . "$DEPLOY_ENV"; set +a
-
-echo "[BUILD] IMAGE_NAME=$IMAGE_NAME  TAG=$TAG"
-DOCKER_BUILDKIT=1 docker build -t "$IMAGE_NAME:$TAG" .
-'''
+            set -Eeuo pipefail
+            # Load deploy envs for this shell only
+            set -a
+            . "$DEPLOY_ENV"      # defines: REGISTRY_HOST, IMAGE_NAME, APP_NAME, ...
+            set +a
+            '''
         }
       }
     }
@@ -116,29 +47,33 @@ DOCKER_BUILDKIT=1 docker build -t "$IMAGE_NAME:$TAG" .
       steps {
         withCredentials([file(credentialsId: 'deploy-env', variable: 'DEPLOY_ENV')]) {
           sh '''#!/usr/bin/env bash
-set -Eeuo pipefail
-set -a; . "$DEPLOY_ENV"; set +a
+            set -Eeuo pipefail
+            set -a
+            . "$DEPLOY_ENV"
+            set +a
 
-echo "[PUSH] -> $REGISTRY_HOST/$IMAGE_NAME:$TAG"
-docker tag  "$IMAGE_NAME:$TAG" "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
-docker push "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
-'''
+            docker tag "$IMAGE_NAME:$TAG" "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
+
+            docker push "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
+            '''
         }
       }
     }
 
-    stage('Deploy (SSH to remote)') {
-      steps {
-        sshagent(credentials: ['ssh-remote-dev']) {
-          withCredentials([file(credentialsId: 'deploy-env', variable: 'DEPLOY_ENV')]) {
-            sh '''#!/usr/bin/env bash
+ stage('Deploy (SSH to remote)') {
+  steps {
+    sshagent(credentials: ['ssh-remote-dev']) {
+      withCredentials([file(credentialsId: 'deploy-env', variable: 'DEPLOY_ENV')]) {
+        sh '''#!/usr/bin/env bash
 set -Eeuo pipefail
 set -a; . "$DEPLOY_ENV"; set +a
 
+echo "[INFO] Jenkins node: $(hostname) / user: $(whoami)"
+echo "[INFO] SSH client: $(ssh -V 2>&1 || true)"
 echo "[INFO] Target: $REMOTE_USER@$REMOTE_HOST"
-echo "[INFO] Image : $REGISTRY_HOST/$IMAGE_NAME:$TAG"
+echo "[INFO] Image:  $REGISTRY_HOST/$IMAGE_NAME:$TAG"
 
-# Chạy script trên remote qua stdin
+# Đổ script qua stdin cho ssh, truyền tham số qua argv
 cat <<'REMOTE' | ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" bash -s -- \
   "$REGISTRY_HOST" "$IMAGE_NAME" "$TAG" "$APP_NAME" "$HOST_PORT" "$APP_PORT"
 set -Eeuo pipefail
@@ -152,34 +87,43 @@ docker run -d --name "$APP_NAME" --restart=always \
   -p "$HOST_PORT:$APP_PORT" \
   "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
 sleep 3
-docker ps --filter name="$APP_NAME" --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}'
+docker ps --filter name="$APP_NAME" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
 REMOTE
 '''
-          }
-        }
       }
     }
   }
+}
+
+
+
+  }
 
   post {
-    always {
-      script {
-        sh 'docker system prune -f || true'
-        sh 'rm -rf ./* || true'
-      }
-    }
+    always { cleanWs() }
     success {
-      script {
-        def desc = "Build #${env.BUILD_NUMBER} completed successfully for job ${env.JOB_NAME}"
-        notifyWebhook("✅ Build Successful!", desc, 65280)
-        sh 'journalctl --vacuum-size=100M || true'
-      }
+        script {
+            def executionTime = String.format("%.2f", currentBuild.duration / 1000.0) // Time in seconds
+            def timestamp = new Date().format("yyyy-MM-dd HH:mm:ss", TimeZone.getTimeZone("UTC"))
+
+            echo "✅ Build Successful!"
+            discordSend(
+              webhookURL: env.DISCORD_WEBHOOK_URL,
+              description: "**Job:** ${env.JOB_NAME}\n**Build:** #${env.BUILD_NUMBER}\n**Branch:** ${env.BRANCH_NAME}\n**Commit:** `${env.GIT_COMMIT_HASH}`\n**Author:** ${env.GIT_AUTHOR}\n**Message:** ${env.GIT_COMMIT_MESSAGE}\n**Execution Time:** ${executionTime} sec\n**Timestamp:** ${timestamp}\n[View Build](${env.BUILD_URL})",
+              title: "✅ Build Successful!",
+              footer: "Jenkins CI/CD | Success ✅"
+            )
+        }
+        
     }
     failure {
-      script {
-        def desc = "Build #${env.BUILD_NUMBER} failed for job ${env.JOB_NAME}"
-        notifyWebhook("❌ Build Failed!", desc, 16711680)
-      }
+        echo "❌ Build Failed!"
+        discordSend(
+            webhookURL: env.DISCORD_WEBHOOK_URL,
+            description: "**Job:** ${env.JOB_NAME}\n**Build:** #${env.BUILD_NUMBER}\n**Branch:** ${env.BRANCH_NAME}\n**Commit:** `${env.GIT_COMMIT_HASH}`\n**Author:** ${env.GIT_AUTHOR}\n**Message:** ${env.GIT_COMMIT_MESSAGE}\n[View Build](${env.BUILD_URL})",
+            title: "❌ Build Failed!",
+            footer: "Jenkins CI/CD | Failed ❌"
+        )
     }
   }
 }
