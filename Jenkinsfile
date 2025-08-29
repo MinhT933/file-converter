@@ -16,7 +16,6 @@ def notifyWebhook(String title, String description, int color) {
       color      : color
     ]]
   ])
-  // escape để nhét JSON vào chuỗi shell single-quoted an toàn
   def escaped = payload.replace("'", "'\"'\"'")
 
   withCredentials([string(credentialsId: 'DISCORD_WEBHOOK_URL', variable: 'WEBHOOK_URL')]) {
