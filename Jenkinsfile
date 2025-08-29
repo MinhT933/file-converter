@@ -1,58 +1,47 @@
 // Jenkinsfile
 import groovy.json.JsonOutput
 
-// Marker để chắc chắn Jenkins dùng file mới
-def JF_MARKER = "v2025-08-29-5"
+// Marker để chắc chắn Jenkins đang dùng file mới
+def JF_MARKER = "v2025-08-29-6"
 
-// ===== Helper: gửi thông báo tới webhook (proxy nội bộ / Discord proxy) =====
-// API phía bạn đã lần lượt đòi sender.id, sender.login, sender.html_url,...
-// => Gửi luôn object 'sender' theo schema GitHub để khỏi thiếu field.
+// ===== Helper: gửi thông báo tới webhook =====
+// - Nếu URL là Discord -> gửi payload Discord chuẩn (trả 204 khi OK)
+// - Nếu không phải Discord -> gửi payload "custom" có trường sender tối thiểu
 def notifyWebhook(String title, String description, int color) {
-  def sender = [
-    id: 1,
-    login: 'jenkins',
-    node_id: 'MDQ6VXNlcjE=',
-    avatar_url: 'https://avatars.githubusercontent.com/u/1?v=4',
-    gravatar_id: '',
-    url: 'https://api.github.com/users/jenkins',
-    html_url: 'https://github.com/jenkins',
-    followers_url: 'https://api.github.com/users/jenkins/followers',
-    following_url: 'https://api.github.com/users/jenkins/following{/other_user}',
-    gists_url: 'https://api.github.com/users/jenkins/gists{/gist_id}',
-    starred_url: 'https://api.github.com/users/jenkins/starred{/owner}{/repo}',
-    subscriptions_url: 'https://api.github.com/users/jenkins/subscriptions',
-    organizations_url: 'https://api.github.com/users/jenkins/orgs',
-    repos_url: 'https://api.github.com/users/jenkins/repos',
-    events_url: 'https://api.github.com/users/jenkins/events{/privacy}',
-    received_events_url: 'https://api.github.com/users/jenkins/received_events',
-    type: 'User',
-    site_admin: false
-  ]
-
-  def payload = JsonOutput.toJson([
-    sender  : sender,
-    username: 'Jenkins CI/CD',
-    embeds  : [[
-      title      : title,
-      description: description,
-      color      : color
-    ]]
-  ])
-
-  // Log payload (không chứa secret) để debug
-  echo "Webhook payload => ${payload}"
-
-  // Escape để nhét JSON vào single-quoted shell an toàn
-  def escaped = payload.replace("'", "'\"'\"'")
-
   withCredentials([string(credentialsId: 'DISCORD_WEBHOOK_URL', variable: 'WEBHOOK_URL')]) {
+
+    def isDiscord = WEBHOOK_URL.contains('discord.com') || WEBHOOK_URL.contains('discordapp.com')
+    Map payloadMap
+
+    if (isDiscord) {
+      payloadMap = [
+        content : "${title} ${description}",
+        username: "Jenkins CI/CD",
+        embeds  : [[ title: title, description: description, color: color ]]
+      ]
+    } else {
+      payloadMap = [
+        sender  : [ id: 1, login: 'jenkins', html_url: 'https://github.com/jenkins' ],
+        username: 'Jenkins CI/CD',
+        embeds  : [[ title: title, description: description, color: color ]]
+      ]
+    }
+
+    def payload = JsonOutput.toJson(payloadMap)
+    echo "Webhook payload (type=${isDiscord ? 'discord' : 'custom'}) => ${payload}"
+    def escaped = payload.replace("'", "'\"'\"'")
+
     sh """#!/usr/bin/env bash
 set -Eeuo pipefail
-curl -sS --fail-with-body \\
-  -H 'Content-Type: application/json' \\
-  -X POST \\
-  -d '${escaped}' "\$WEBHOOK_URL" \\
-  || true
+tmp=\$(mktemp)
+code=\$(curl -sS -o "\$tmp" -w "%{http_code}" \\
+  -H 'Content-Type: application/json' -X POST \\
+  -d '${escaped}' "\$WEBHOOK_URL" || true)
+echo "Webhook HTTP status: \$code"
+if [ "\$code" -ge 400 ]; then
+  echo "Webhook response body:"; sed -n '1,200p' "\$tmp"
+fi
+rm -f "\$tmp"
 """
   }
 }
@@ -79,26 +68,18 @@ pipeline {
   stages {
 
     stage('Banner') {
-      steps {
-        echo "JF MARKER: ${JF_MARKER}"
-      }
+      steps { echo "JF MARKER: ${JF_MARKER}" }
     }
 
     stage('Check Credentials (fail fast)') {
       steps {
         script { echo "→ Checking credentials..." }
-
-        // Secret file: deploy-env (bắt buộc)
         withCredentials([file(credentialsId: 'deploy-env', variable: 'DEPLOY_ENV')]) {
           sh 'echo "OK: deploy-env (secret file exists)"'
         }
-
-        // SSH key: ssh-remote-dev (bắt buộc)
         sshagent(credentials: ['ssh-remote-dev']) {
           sh 'echo "OK: ssh-remote-dev (ssh key visible)"'
         }
-
-        // Webhook URL: DISCORD_WEBHOOK_URL (bắt buộc)
         withCredentials([string(credentialsId: 'DISCORD_WEBHOOK_URL', variable: 'WEBHOOK_URL')]) {
           sh 'echo "OK: DISCORD_WEBHOOK_URL (secret text bound)"'
         }
@@ -183,12 +164,10 @@ REMOTE
   post {
     always {
       script {
-        // Cleanup an toàn (không làm fail build)
         sh 'docker system prune -f || true'
         sh 'rm -rf ./* || true'
       }
     }
-
     success {
       script {
         def desc = "Build #${env.BUILD_NUMBER} completed successfully for job ${env.JOB_NAME}"
@@ -196,7 +175,6 @@ REMOTE
         sh 'journalctl --vacuum-size=100M || true'
       }
     }
-
     failure {
       script {
         def desc = "Build #${env.BUILD_NUMBER} failed for job ${env.JOB_NAME}"
