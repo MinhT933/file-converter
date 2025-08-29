@@ -2,13 +2,13 @@
 import groovy.json.JsonOutput
 
 // Marker để chắc chắn Jenkins đang dùng file mới
-def JF_MARKER = "v2025-08-29-3"
+def JF_MARKER = "v2025-08-29-4"
 
-// === Helper: gửi thông báo tới webhook (Discord/proxy nội bộ) ===
-// LƯU Ý: endpoint của bạn yêu cầu `sender` là OBJECT, không phải string
-def notifyDiscord(String title, String description, int color) {
+// === Helper: gửi thông báo tới webhook (proxy nội bộ/Discord) ===
+// LƯU Ý: API của bạn yêu cầu `sender` là OBJECT và có `id`
+def notifyWebhook(String title, String description, int color) {
   def payload = JsonOutput.toJson([
-    sender  : [ name: 'jenkins' ],      // 👈 object
+    sender  : [ id: 'jenkins', name: 'Jenkins CI/CD' ], // 👈 có id
     username: 'Jenkins CI/CD',
     embeds  : [[
       title      : title,
@@ -16,7 +16,7 @@ def notifyDiscord(String title, String description, int color) {
       color      : color
     ]]
   ])
-  // Escape để nhét JSON vào chuỗi shell single-quoted
+  // escape để nhét JSON vào chuỗi shell single-quoted an toàn
   def escaped = payload.replace("'", "'\"'\"'")
 
   withCredentials([string(credentialsId: 'DISCORD_WEBHOOK_URL', variable: 'WEBHOOK_URL')]) {
@@ -34,9 +34,7 @@ curl -sS --fail-with-body \\
 pipeline {
   agent any
 
-  triggers {
-    githubPush()
-  }
+  triggers { githubPush() }
 
   options {
     timeout(time: 1, unit: 'HOURS')
@@ -64,17 +62,17 @@ pipeline {
       steps {
         script { echo "→ Checking credentials..." }
 
-        // Secret file: deploy-env
+        // Secret file: deploy-env (bắt buộc)
         withCredentials([file(credentialsId: 'deploy-env', variable: 'DEPLOY_ENV')]) {
           sh 'echo "OK: deploy-env (secret file exists)"'
         }
 
-        // SSH key
+        // SSH key: ssh-remote-dev (bắt buộc)
         sshagent(credentials: ['ssh-remote-dev']) {
           sh 'echo "OK: ssh-remote-dev (ssh key visible)"'
         }
 
-        // Webhook URL (secret text)
+        // Webhook URL: DISCORD_WEBHOOK_URL (bắt buộc)
         withCredentials([string(credentialsId: 'DISCORD_WEBHOOK_URL', variable: 'WEBHOOK_URL')]) {
           sh 'echo "OK: DISCORD_WEBHOOK_URL (secret text bound)"'
         }
@@ -147,7 +145,7 @@ docker run -d --name "$APP_NAME" --restart=always \
   -p "$HOST_PORT:$APP_PORT" \
   "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
 sleep 3
-docker ps --filter name="$APP_NAME" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+docker ps --filter name="$APP_NAME" --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}'
 REMOTE
 '''
           }
@@ -168,7 +166,7 @@ REMOTE
     success {
       script {
         def desc = "Build #${env.BUILD_NUMBER} completed successfully for job ${env.JOB_NAME}"
-        notifyDiscord("✅ Build Successful!", desc, 65280)
+        notifyWebhook("✅ Build Successful!", desc, 65280)
         sh 'journalctl --vacuum-size=100M || true'
       }
     }
@@ -176,7 +174,7 @@ REMOTE
     failure {
       script {
         def desc = "Build #${env.BUILD_NUMBER} failed for job ${env.JOB_NAME}"
-        notifyDiscord("❌ Build Failed!", desc, 16711680)
+        notifyWebhook("❌ Build Failed!", desc, 16711680)
       }
     }
   }
