@@ -1,5 +1,17 @@
 ############################
-# 3) Runtime (production-like)
+# 1) Build binary
+############################
+FROM golang:1.21-alpine AS builder
+
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN go build -o /usr/local/bin/myapp-server ./cmd/server
+
+############################
+# 2) Runtime (production-like)
 ############################
 FROM debian:bullseye-slim AS server-runtime
 
@@ -13,9 +25,6 @@ WORKDIR /app
 
 # Copy binary từ builder
 COPY --from=builder /usr/local/bin/myapp-server /usr/local/bin/myapp-server
-
-# Cài đặt swag
-RUN go install github.com/swaggo/swag/cmd/swag@latest
 
 # Nếu server phục vụ static swagger từ thư mục docs, copy luôn:
 COPY --from=builder /src/docs /app/docs
