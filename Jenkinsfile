@@ -38,7 +38,7 @@ pipeline {
             . "$DEPLOY_ENV_FILE"
             set +a
 
-            docker build -f src/Dockerfile.server --build-arg APP_NAME="$APP_NAME" -t "$IMAGE_NAME:$TAG" .
+            docker build -f Dockerfile.server --build-arg APP_NAME="$APP_NAME" -t "$IMAGE_NAME:$TAG" .
           '''
         }
       }
