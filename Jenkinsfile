@@ -111,7 +111,7 @@ REMOTE
       }
     }
     failure {
-      echo "❌ Build Failed!"
+      echo "❌ Build Failed! Details: ${currentBuild.result}"
       discordSend(
         webhookURL: env.DISCORD_WEBHOOK_URL,
         description: "**Job:** ${env.JOB_NAME}\n**Build:** #${env.BUILD_NUMBER}\n**Branch:** ${env.BRANCH_NAME}\n**Commit:** `${env.GIT_COMMIT_HASH}`\n**Author:** ${env.GIT_AUTHOR}\n**Message:** ${env.GIT_COMMIT_MESSAGE}\n[View Build](${env.BUILD_URL})",
