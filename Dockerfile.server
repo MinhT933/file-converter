@@ -7,6 +7,10 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 
+
+# Cài swag CLI
+RUN go install github.com/swaggo/swag/cmd/swag@latest
+
 COPY . .
 RUN go build -o /usr/local/bin/myapp-server ./cmd/server
 
