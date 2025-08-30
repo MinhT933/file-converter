@@ -72,10 +72,11 @@ echo "[INFO] SSH client: $(ssh -V 2>&1 || true)"
 echo "[INFO] Target: $REMOTE_USER@$REMOTE_HOST"
 echo "[INFO] Image:  $REGISTRY_HOST/$IMAGE_NAME:$TAG"
 
-# Kiểm tra container có tồn tại không và xóa nếu có
-if [ $(docker ps -a -q -f name=$APP_NAME) ]; then
+# Kiểm tra xem container cũ có tồn tại không và xóa nếu có
+EXISTING_CONTAINER_ID=$(docker ps -a -q -f name=$APP_NAME)
+if [ -n "$EXISTING_CONTAINER_ID" ]; then
   echo "[INFO] Removing existing container: $APP_NAME"
-  docker rm -f $APP_NAME
+  docker rm -f $EXISTING_CONTAINER_ID
 else
   echo "[INFO] No existing container found with name $APP_NAME"
 fi
@@ -100,6 +101,7 @@ REMOTE
     }
   }
 }
+
 
     }
 
