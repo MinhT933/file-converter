@@ -61,52 +61,33 @@ pipeline {
 stage('Deploy (SSH to remote)') {
   steps {
     sshagent(credentials: ['ssh-remote-dev']) {
-     configFileProvider([configFile(fileId: 'deploy-convert-file-env', targetLocation: 'deploy.env')]) {
+      withCredentials([file(credentialsId: 'deploy-env', variable: 'DEPLOY_ENV')]) {
         sh '''#!/usr/bin/env bash
 set -Eeuo pipefail
-set -a; . deploy.env; set +a
+set -a; . "$DEPLOY_ENV"; set +a
 
-echo "[INFO] Jenkins node: $(hostname) / user: $(whoami)"
-echo "[INFO] SSH client: $(ssh -V 2>&1 || true)"
 echo "[INFO] Target: $REMOTE_USER@$REMOTE_HOST"
 echo "[INFO] Image:  $REGISTRY_HOST/$IMAGE_NAME:$TAG"
 
 # Kiểm tra và xóa container cũ theo tên
 CONTAINER_NAME="be-server-convert-file"
 
-# Kiểm tra xem container có tồn tại không
-EXISTING_CONTAINER_ID=$(docker ps -a -q -f name=$CONTAINER_NAME)
-if [ -n "$EXISTING_CONTAINER_ID" ]; then
-  echo "[INFO] Stopping and removing existing container: $CONTAINER_NAME"
-  
-  # Dừng container
-  docker stop $EXISTING_CONTAINER_ID || true
-  # Xóa container
-  docker rm -f $EXISTING_CONTAINER_ID || true
-else
-  echo "[INFO] No container found with name $CONTAINER_NAME"
-fi
+# Dừng và xóa container nếu tồn tại
+docker ps -a -q -f name=$CONTAINER_NAME | xargs -r docker rm -f || true
 
-# Đổ script qua stdin cho ssh, truyền tham số qua argv
-cat <<'REMOTE' | ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" bash -s -- \
-  "$REGISTRY_HOST" "$IMAGE_NAME" "$TAG" "$APP_NAME" "$HOST_PORT" "$APP_PORT"
-set -Eeuo pipefail
-REGISTRY_HOST="$1"; IMAGE_NAME="$2"; TAG="$3"
-APP_NAME="$4"; HOST_PORT="$5"; APP_PORT="$6"
-
-echo "[REMOTE] Docker: $(docker --version || true)"
+# Chạy container mới
 docker pull "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
-docker run -d --name "$APP_NAME" --restart=always \
+docker run -d --name "$CONTAINER_NAME" --restart=always \
   -p "$HOST_PORT:$APP_PORT" \
   "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
 sleep 3
-docker ps --filter name="$APP_NAME" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
-REMOTE
+docker ps --filter name="$CONTAINER_NAME" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
 '''
       }
     }
   }
 }
+
 
     }
 
