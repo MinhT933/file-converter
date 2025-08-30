@@ -61,53 +61,33 @@ pipeline {
 stage('Deploy (SSH to remote)') {
   steps {
     sshagent(credentials: ['ssh-remote-dev']) {
-      configFileProvider([configFile(fileId: 'deploy-convert-file-env', targetLocation: 'deploy.env')]) {
+      withCredentials([file(credentialsId: 'deploy-env', variable: 'DEPLOY_ENV')]) {
         sh '''#!/usr/bin/env bash
 set -Eeuo pipefail
-set -a; . deploy.env; set +a
+set -a; . "$DEPLOY_ENV"; set +a
 
 echo "[INFO] Jenkins node: $(hostname) / user: $(whoami)"
 echo "[INFO] SSH client: $(ssh -V 2>&1 || true)"
 echo "[INFO] Target: $REMOTE_USER@$REMOTE_HOST"
 echo "[INFO] Image:  $REGISTRY_HOST/$IMAGE_NAME:$TAG"
 
-# Kiểm tra container có tồn tại không và kiểm tra trạng thái
-EXISTING_CONTAINER_ID=$(docker ps -a -q -f name=$APP_NAME)
+# Kiểm tra và xóa container cũ theo tên
+CONTAINER_NAME="be-server-convert-file"
+
+# Kiểm tra xem container có tồn tại không
+EXISTING_CONTAINER_ID=$(docker ps -a -q -f name=$CONTAINER_NAME)
 if [ -n "$EXISTING_CONTAINER_ID" ]; then
-  echo "[INFO] Container $APP_NAME exists, checking status..."
-
-  # Kiểm tra trạng thái container
-  CONTAINER_STATUS=$(docker inspect --format '{{.State.Status}}' $EXISTING_CONTAINER_ID)
-  echo "[INFO] Container $APP_NAME status: $CONTAINER_STATUS"
-
-  if [ "$CONTAINER_STATUS" == "restarting" ] || [ "$CONTAINER_STATUS" == "paused" ] || [ "$CONTAINER_STATUS" == "exited" ]; then
-    echo "[INFO] Container is in a problematic state ($CONTAINER_STATUS). Stopping and removing..."
-    
-    # Dừng container
-    docker stop $EXISTING_CONTAINER_ID || true
-    # Xóa container
-    docker rm -f $EXISTING_CONTAINER_ID || true
-  else
-    echo "[INFO] Container is in running state ($CONTAINER_STATUS). Proceeding without stopping."
-  fi
+  echo "[INFO] Stopping and removing existing container: $CONTAINER_NAME"
+  
+  # Dừng container
+  docker stop $EXISTING_CONTAINER_ID || true
+  # Xóa container
+  docker rm -f $EXISTING_CONTAINER_ID || true
 else
-  echo "[INFO] No running container found with name $APP_NAME"
+  echo "[INFO] No container found with name $CONTAINER_NAME"
 fi
 
-# Kiểm tra lại container tồn tại trong Docker và xóa nếu còn sót lại
-EXISTING_CONTAINER_ID_ALL=$(docker ps -a -q -f name=$APP_NAME)
-if [ -n "$EXISTING_CONTAINER_ID_ALL" ]; then
-  echo "[INFO] Removing existing container: $APP_NAME"
-  docker rm -f $EXISTING_CONTAINER_ID_ALL || true
-else
-  echo "[INFO] No existing container found with name $APP_NAME"
-fi
-
-# Kiểm tra container tồn tại trong Docker
-echo "[INFO] Checking if container $APP_NAME exists..."
-docker ps -a | grep $APP_NAME && echo "[INFO] Container $APP_NAME exists." || echo "[INFO] No such container found."
-
-# Chạy container mới
+# Đổ script qua stdin cho ssh, truyền tham số qua argv
 cat <<'REMOTE' | ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" bash -s -- \
   "$REGISTRY_HOST" "$IMAGE_NAME" "$TAG" "$APP_NAME" "$HOST_PORT" "$APP_PORT"
 set -Eeuo pipefail
