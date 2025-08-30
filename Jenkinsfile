@@ -64,7 +64,7 @@ stage('Deploy (SSH to remote)') {
      configFileProvider([configFile(fileId: 'deploy-convert-file-env', targetLocation: 'deploy.env')]) {
         sh '''#!/usr/bin/env bash
 set -Eeuo pipefail
-set -a; . "$DEPLOY_ENV"; set +a
+set -a; . deploy.env; set +a
 
 echo "[INFO] Jenkins node: $(hostname) / user: $(whoami)"
 echo "[INFO] SSH client: $(ssh -V 2>&1 || true)"
