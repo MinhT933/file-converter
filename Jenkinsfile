@@ -61,7 +61,7 @@ pipeline {
 stage('Deploy (SSH to remote)') {
   steps {
     sshagent(credentials: ['ssh-remote-dev']) {
-      withCredentials([file(credentialsId: 'deploy-convert-file-env', variable: 'DEPLOY_ENV')]) {
+      withCredentials([file(credentialsId: 'deploy-convert-file-env', targetLocation: 'deploy.env')]) {
         sh '''#!/usr/bin/env bash
 set -Eeuo pipefail
 set -a; . "$DEPLOY_ENV"; set +a
