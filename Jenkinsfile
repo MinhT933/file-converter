@@ -119,20 +119,19 @@ pipeline {
       script {
         echo "❌ Build Failed! Details: ${currentBuild.result}"
 
-        // If build fails, restore the backup container
+        // Kiểm tra và khôi phục container cũ nếu có
         echo "Restoring the old container from backup..."
         sh '''#!/usr/bin/env bash
-        docker rm -f $APP_NAME || true
-        docker run -d --name "$APP_NAME" --restart=always -p "$HOST_PORT:$APP_PORT" "$APP_NAME-backup:$TAG"
+        # Kiểm tra container cũ có tồn tại hay không
+        if docker ps -a --filter "name=$APP_NAME-backup" --format "{{.Names}}" | grep -q "$APP_NAME-backup"; then
+          docker rm -f $APP_NAME || true  # Xóa container cũ nếu có
+          docker run -d --name "$APP_NAME" --restart=always -p "$HOST_PORT:$APP_PORT" "$APP_NAME-backup:$TAG"
+          echo "Restored the container from backup: $APP_NAME-backup:$TAG"
+        else
+          echo "No backup container found, skipping restoration."
+        fi
         docker ps --filter name="$APP_NAME" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
         '''
-        
-        discordSend(
-          webhookURL: env.DISCORD_WEBHOOK_URL,
-          description: "**Job:** ${env.JOB_NAME}\n**Build:** #${env.BUILD_NUMBER}\n**Branch:** ${env.BRANCH_NAME}\n**Commit:** `${env.GIT_COMMIT_HASH}`\n**Author:** ${env.GIT_AUTHOR}\n**Message:** ${env.GIT_COMMIT_MESSAGE}\n[View Build](${env.BUILD_URL})",
-          title: "❌ Build Failed!",
-          footer: "Jenkins CI/CD | Failed ❌"
-        )
       }
     }
   }
