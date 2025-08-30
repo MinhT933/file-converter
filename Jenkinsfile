@@ -61,20 +61,12 @@ pipeline {
 stage('Deploy (SSH to remote)') {
   steps {
     sshagent(credentials: ['ssh-remote-dev']) {
-      withCredentials([file(credentialsId: 'deploy-env', variable: 'DEPLOY_ENV')]) {
+      configFileProvider([configFile(fileId: 'deploy-convert-file-env', targetLocation: 'deploy.env')]) {
         sh '''#!/usr/bin/env bash
+set -x
 set -Eeuo pipefail
-set -a; . "$DEPLOY_ENV"; set +a
-
-# Kiểm tra các biến môi trường
-echo "REMOTE_USER: $REMOTE_USER"
-echo "REMOTE_HOST: $REMOTE_HOST"
-echo "REGISTRY_HOST: $REGISTRY_HOST"
-echo "IMAGE_NAME: $IMAGE_NAME"
-echo "TAG: $TAG"
-echo "APP_NAME: $APP_NAME"
-echo "HOST_PORT: $HOST_PORT"
-echo "APP_PORT: $APP_PORT"
+cat deploy.env
+set -a; . deploy.env; set +a
 
 # Đổ script qua stdin cho ssh, truyền tham số qua argv
 cat <<'REMOTE' | ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" bash -s -- \
@@ -97,6 +89,7 @@ REMOTE
     }
   }
 }
+
 
     }
 
