@@ -3,7 +3,7 @@ pipeline {
 
     options {
         timestamps()
-        ansiColor('xterm') // terminal color
+        ansiColor('xterm')
     }
 
     environment {
