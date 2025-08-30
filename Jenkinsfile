@@ -66,27 +66,37 @@ stage('Deploy (SSH to remote)') {
 set -Eeuo pipefail
 set -a; . "$DEPLOY_ENV"; set +a
 
-# SSH vào remote server và xóa container cũ
-ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" <<EOF
-  echo "[INFO] Stopping and removing container if it exists..."
-  docker stop be-server-convert-file || true
-  docker rm -f be-server-convert-file || true
-  echo "[INFO] Container removed"
-EOF
+# Kiểm tra các biến môi trường
+echo "REMOTE_USER: $REMOTE_USER"
+echo "REMOTE_HOST: $REMOTE_HOST"
+echo "REGISTRY_HOST: $REGISTRY_HOST"
+echo "IMAGE_NAME: $IMAGE_NAME"
+echo "TAG: $TAG"
+echo "APP_NAME: $APP_NAME"
+echo "HOST_PORT: $HOST_PORT"
+echo "APP_PORT: $APP_PORT"
 
-# Tiến hành tạo container mới
+# Đổ script qua stdin cho ssh, truyền tham số qua argv
+cat <<'REMOTE' | ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" bash -s -- \
+  "$REGISTRY_HOST" "$IMAGE_NAME" "$TAG" "$APP_NAME" "$HOST_PORT" "$APP_PORT"
+set -Eeuo pipefail
+REGISTRY_HOST="$1"; IMAGE_NAME="$2"; TAG="$3"
+APP_NAME="$4"; HOST_PORT="$5"; APP_PORT="$6"
+
+echo "[REMOTE] Docker: $(docker --version || true)"
 docker pull "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
-docker run -d --name "be-server-convert-file" --restart=always \
+docker rm -f "$APP_NAME" || true
+docker run -d --name "$APP_NAME" --restart=always \
   -p "$HOST_PORT:$APP_PORT" \
   "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
 sleep 3
-docker ps --filter name="be-server-convert-file" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+docker ps --filter name="$APP_NAME" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+REMOTE
 '''
       }
     }
   }
 }
-
 
     }
 
