@@ -72,7 +72,7 @@ echo "[INFO] SSH client: $(ssh -V 2>&1 || true)"
 echo "[INFO] Target: $REMOTE_USER@$REMOTE_HOST"
 echo "[INFO] Image:  $REGISTRY_HOST/$IMAGE_NAME:$TAG"
 
-# Kiểm tra xem container cũ có đang chạy không và dừng nó nếu có
+# Kiểm tra và dừng container cũ nếu có
 EXISTING_CONTAINER_ID=$(docker ps -q -f name=$APP_NAME)
 if [ -n "$EXISTING_CONTAINER_ID" ]; then
   echo "[INFO] Stopping existing container: $APP_NAME"
@@ -90,6 +90,10 @@ if [ -n "$EXISTING_CONTAINER_ID_ALL" ]; then
 else
   echo "[INFO] No existing container found with name $APP_NAME"
 fi
+
+# Kiểm tra container tồn tại trong Docker
+echo "[INFO] Checking if container $APP_NAME exists..."
+docker ps -a | grep $APP_NAME && echo "[INFO] Container $APP_NAME exists." || echo "[INFO] No such container found."
 
 # Chạy container mới
 cat <<'REMOTE' | ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" bash -s -- \
@@ -111,6 +115,7 @@ REMOTE
     }
   }
 }
+
 
 
     }
