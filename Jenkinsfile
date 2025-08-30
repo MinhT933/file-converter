@@ -79,7 +79,7 @@ if [ -n "$EXISTING_CONTAINER_ID" ]; then
   # Kiểm tra trạng thái container
   CONTAINER_STATUS=$(docker inspect --format '{{.State.Status}}' $EXISTING_CONTAINER_ID)
   echo "[INFO] Container $APP_NAME status: $CONTAINER_STATUS"
-  
+
   if [ "$CONTAINER_STATUS" == "restarting" ] || [ "$CONTAINER_STATUS" == "paused" ] || [ "$CONTAINER_STATUS" == "exited" ]; then
     echo "[INFO] Container is in a problematic state ($CONTAINER_STATUS). Stopping and removing..."
     
@@ -128,6 +128,7 @@ REMOTE
   }
 }
 
+    }
 
     post {
         success {
