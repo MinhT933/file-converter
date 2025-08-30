@@ -17,10 +17,10 @@ pipeline {
     stage('Checkout') {
       steps {
         checkout scm
-         sh 'ls -lah'
-         sh 'git status'
-         sh 'pwd'
-         sh 'echo "WORKSPACE is: $WORKSPACE"'
+        sh 'ls -lah'
+        sh 'git status'
+        sh 'pwd'
+        sh 'echo "WORKSPACE is: $WORKSPACE"'
         script {
           env.GIT_COMMIT_HASH    = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
           env.GIT_AUTHOR         = sh(script: "git log -1 --pretty=format:'%an'", returnStdout: true).trim()
@@ -42,7 +42,22 @@ pipeline {
           '''
         }
       }
-      
+    }
+
+    stage('Backup Old Container') {
+      steps {
+        script {
+          // Backup the old container before starting a new one
+          sh '''#!/usr/bin/env bash
+          if docker ps -a --filter "name=$APP_NAME" --format "{{.Names}}" | grep -q "$APP_NAME"; then
+            docker commit $APP_NAME $APP_NAME-backup:$TAG
+            echo "[INFO] Backup of the old container ($APP_NAME) created as $APP_NAME-backup:$TAG"
+          else
+            echo "[INFO] No existing container found, proceeding with the new build."
+          fi
+          '''
+        }
+      }
     }
 
     stage('Tag & Push') {
@@ -64,30 +79,21 @@ pipeline {
         sshagent(credentials: ['ssh-remote-dev']) {
           configFileProvider([configFile(fileId: 'deploy-convert-file-env', targetLocation: 'deploy.env')]) {
             sh '''#!/usr/bin/env bash
-set -Eeuo pipefail
-set -a; . deploy.env; set +a
+            set -Eeuo pipefail
+            set -a; . deploy.env; set +a
 
-echo "[INFO] Jenkins node: $(hostname) / user: $(whoami)"
-echo "[INFO] SSH client: $(ssh -V 2>&1 || true)"
-echo "[INFO] Target: $REMOTE_USER@$REMOTE_HOST"
-echo "[INFO] Image:  $REGISTRY_HOST/$IMAGE_NAME:$TAG"
+            echo "[INFO] Jenkins node: $(hostname) / user: $(whoami)"
+            echo "[INFO] SSH client: $(ssh -V 2>&1 || true)"
+            echo "[INFO] Target: $REMOTE_USER@$REMOTE_HOST"
+            echo "[INFO] Image:  $REGISTRY_HOST/$IMAGE_NAME:$TAG"
 
-cat <<'REMOTE' | ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" bash -s -- \
-  "$REGISTRY_HOST" "$IMAGE_NAME" "$TAG" "$APP_NAME" "$HOST_PORT" "$APP_PORT"
-set -Eeuo pipefail
-REGISTRY_HOST="$1"; IMAGE_NAME="$2"; TAG="$3"
-APP_NAME="$4"; HOST_PORT="$5"; APP_PORT="$6"
+            # Deploy new container
+            docker rm -f $APP_NAME || true
+            docker run -d --name "$APP_NAME" --restart=always -p "$HOST_PORT:$APP_PORT" "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
 
-echo "[REMOTE] Docker: $(docker --version || true)"
-docker pull "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
-docker rm -f "$APP_NAME" || true
-docker run -d --name "$APP_NAME" --restart=always \
-  -p "$HOST_PORT:$APP_PORT" \
-  "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
-sleep 3
-docker ps --filter name="$APP_NAME" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
-REMOTE
-'''
+            # Check if deploy succeeded
+            docker ps --filter name="$APP_NAME" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+            '''
           }
         }
       }
@@ -95,7 +101,6 @@ REMOTE
   }
 
   post {
-    // always { cleanWs() }
     success {
       script {
         def executionTime = String.format("%.2f", currentBuild.duration / 1000.0)
@@ -111,13 +116,24 @@ REMOTE
       }
     }
     failure {
-      echo "❌ Build Failed! Details: ${currentBuild.result}"
-      discordSend(
-        webhookURL: env.DISCORD_WEBHOOK_URL,
-        description: "**Job:** ${env.JOB_NAME}\n**Build:** #${env.BUILD_NUMBER}\n**Branch:** ${env.BRANCH_NAME}\n**Commit:** `${env.GIT_COMMIT_HASH}`\n**Author:** ${env.GIT_AUTHOR}\n**Message:** ${env.GIT_COMMIT_MESSAGE}\n[View Build](${env.BUILD_URL})",
-        title: "❌ Build Failed!",
-        footer: "Jenkins CI/CD | Failed ❌"
-      )
+      script {
+        echo "❌ Build Failed! Details: ${currentBuild.result}"
+
+        // If build fails, restore the backup container
+        echo "Restoring the old container from backup..."
+        sh '''#!/usr/bin/env bash
+        docker rm -f $APP_NAME || true
+        docker run -d --name "$APP_NAME" --restart=always -p "$HOST_PORT:$APP_PORT" "$APP_NAME-backup:$TAG"
+        docker ps --filter name="$APP_NAME" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+        '''
+        
+        discordSend(
+          webhookURL: env.DISCORD_WEBHOOK_URL,
+          description: "**Job:** ${env.JOB_NAME}\n**Build:** #${env.BUILD_NUMBER}\n**Branch:** ${env.BRANCH_NAME}\n**Commit:** `${env.GIT_COMMIT_HASH}`\n**Author:** ${env.GIT_AUTHOR}\n**Message:** ${env.GIT_COMMIT_MESSAGE}\n[View Build](${env.BUILD_URL})",
+          title: "❌ Build Failed!",
+          footer: "Jenkins CI/CD | Failed ❌"
+        )
+      }
     }
   }
 }
