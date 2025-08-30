@@ -76,7 +76,7 @@ echo "[INFO] Image:  $REGISTRY_HOST/$IMAGE_NAME:$TAG"
 EXISTING_CONTAINER_ID=$(docker ps -a -q -f name=$APP_NAME)
 if [ -n "$EXISTING_CONTAINER_ID" ]; then
   echo "[INFO] Removing existing container: $APP_NAME"
-  docker rm -f $EXISTING_CONTAINER_ID
+  docker rm -f $EXISTING_CONTAINER_ID || true
 else
   echo "[INFO] No existing container found with name $APP_NAME"
 fi
@@ -101,8 +101,6 @@ REMOTE
     }
   }
 }
-
-
     }
 
     post {
