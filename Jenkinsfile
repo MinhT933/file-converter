@@ -66,22 +66,21 @@ stage('Deploy (SSH to remote)') {
 set -Eeuo pipefail
 set -a; . "$DEPLOY_ENV"; set +a
 
-echo "[INFO] Target: $REMOTE_USER@$REMOTE_HOST"
-echo "[INFO] Image:  $REGISTRY_HOST/$IMAGE_NAME:$TAG"
+# SSH vào remote server và xóa container cũ
+ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" <<EOF
+  echo "[INFO] Stopping and removing container if it exists..."
+  docker stop be-server-convert-file || true
+  docker rm -f be-server-convert-file || true
+  echo "[INFO] Container removed"
+EOF
 
-# Kiểm tra và xóa container cũ theo tên
-CONTAINER_NAME="be-server-convert-file"
-
-# Dừng và xóa container nếu tồn tại
-docker ps -a -q -f name=$CONTAINER_NAME | xargs -r docker rm -f || true
-
-# Chạy container mới
+# Tiến hành tạo container mới
 docker pull "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
-docker run -d --name "$CONTAINER_NAME" --restart=always \
+docker run -d --name "be-server-convert-file" --restart=always \
   -p "$HOST_PORT:$APP_PORT" \
   "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
 sleep 3
-docker ps --filter name="$CONTAINER_NAME" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+docker ps --filter name="be-server-convert-file" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
 '''
       }
     }
