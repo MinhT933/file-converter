@@ -63,34 +63,64 @@ stage('Deploy (SSH to remote)') {
     sshagent(credentials: ['ssh-remote-dev']) {
       configFileProvider([configFile(fileId: 'deploy-convert-file-env', targetLocation: 'deploy.env')]) {
         sh '''#!/usr/bin/env bash
-set -x
 set -Eeuo pipefail
-cat deploy.env
 set -a; . deploy.env; set +a
 
-# Đổ script qua stdin cho ssh, truyền tham số qua argv
+# Chạy script từ xa
 cat <<'REMOTE' | ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" bash -s -- \
   "$REGISTRY_HOST" "$IMAGE_NAME" "$TAG" "$APP_NAME" "$HOST_PORT" "$APP_PORT"
 set -Eeuo pipefail
+
 REGISTRY_HOST="$1"; IMAGE_NAME="$2"; TAG="$3"
 APP_NAME="$4"; HOST_PORT="$5"; APP_PORT="$6"
 
+REMOTE_ENV_FILE="/opt/apps/${APP_NAME}/.env"
+REMOTE_CREDS_FILE="/opt/secrets/firebase-creds.json"
+
 echo "[REMOTE] Docker: $(docker --version || true)"
+echo "[REMOTE] Using ENV:   $REMOTE_ENV_FILE"
+echo "[REMOTE] Using CREDS: $REMOTE_CREDS_FILE"
+
+# Kiểm tra đủ file trước khi chạy
+[ -f "$REMOTE_ENV_FILE" ]   || { echo "❌ Missing $REMOTE_ENV_FILE"; exit 1; }
+[ -f "$REMOTE_CREDS_FILE" ] || { echo "❌ Missing $REMOTE_CREDS_FILE"; exit 1; }
+
+# Kéo image mới
 docker pull "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
-docker rm -f "$APP_NAME" || true
+
+# Dự phòng rollback: lưu image/container cũ (nếu có)
+OLD_IMG="$(docker inspect -f '{{.Image}}' "$APP_NAME" 2>/dev/null || true)"
+docker rm -f "$APP_NAME" >/dev/null 2>&1 || true
+
+# Run container mới
+set -x
 docker run -d --name "$APP_NAME" --restart=always \
+  --add-host=host.docker.internal:host-gateway \
   -p "$HOST_PORT:$APP_PORT" \
+  --env-file "$REMOTE_ENV_FILE" \
+  --mount type=bind,source="$REMOTE_CREDS_FILE",target="/app/firebase-creds.json",readonly \
   "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
+set +x
+
 sleep 3
-docker ps --filter name="$APP_NAME" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+docker ps --filter "name=$APP_NAME" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+
+# (Tuỳ chọn) Health-check đơn giản, /healthz hoặc /ping tuỳ app của bạn
+if command -v curl >/dev/null 2>&1; then
+  curl -fsS "http://127.0.0.1:${HOST_PORT}/healthz" >/dev/null || {
+    echo "❌ Health-check failed. Printing logs..."
+    docker logs --tail 200 "$APP_NAME" || true
+    exit 1
+  }
+fi
+
+echo "✅ Deploy OK"
 REMOTE
 '''
       }
     }
   }
 }
-
-
     }
 
     post {

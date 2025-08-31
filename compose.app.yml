@@ -23,7 +23,7 @@ services:
     volumes:
       - .:/app # dev: 1 mount là đủ, bỏ các mount lẻ để tránh bị “đè”
       - ./entrypoint.sh:/app/entrypoint.sh
-      - ./firebase-creds.json:/app/firebase-creds.json:ro
+      - /opt/secrets/firebase-creds.json:/app/firebase-creds.json:ro
     networks: [shared-net]
     entrypoint:
       ["bash", "-c", "chmod +x /app/entrypoint.sh && /app/entrypoint.sh"]
@@ -48,5 +48,5 @@ services:
 
 networks:
   shared-net:
-    external: true
-    name: fileconv-net
+    name: fileconv-net # Compose sẽ tự tạo network này
+    driver: bridge
