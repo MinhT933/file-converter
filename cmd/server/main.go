@@ -60,7 +60,10 @@ func main() {
 	})
 
 	app.Get("/", func(c *fiber.Ctx) error {
-		return c.SendStatus(fiber.StatusOK)
+		return c.JSON(fiber.Map{
+			"message": "Hello, Fiber! Toàn Gà",
+			"status":  "ok",
+		})
 	})
 
 	app.Use(cors.New(cors.Config{

@@ -47,50 +47,43 @@ pipeline {
       }
     }
 
-    stage('Docker Build (with BuildKit secret)') {
+    stage('Docker Build & Push') {
       steps {
-        configFileProvider([configFile(fileId: 'deploy-convert-file-env', variable: 'DEPLOY_ENV_FILE')]) {
+        configFileProvider([configFile(fileId: 'deploy-convert-file-env', targetLocation: 'deploy.env')]) {
           sh '''#!/usr/bin/env bash
-set -Eeuo pipefail
-set -a; . "$DEPLOY_ENV_FILE"; set +a
-docker build -f Dockerfile.server --build-arg APP_NAME="$APP_NAME" -t "$IMAGE_NAME:$TAG" .
-'''
+          set -Eeuo pipefail
+
+          echo "==> Load env..."
+          set -a; . deploy.env; set +a
+
+          echo "==> Build image..."
+          docker build -f Dockerfile.server \
+            --build-arg APP_NAME="$APP_NAME" \
+            -t "$IMAGE_NAME:$TAG" .
+
+          echo "==> Tag & Push..."
+          docker tag "$IMAGE_NAME:$TAG" "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
+          docker tag "$IMAGE_NAME:$TAG" "$REGISTRY_HOST/$IMAGE_NAME:$LATEST_TAG"
+
+          docker push "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
+          docker push "$REGISTRY_HOST/$IMAGE_NAME:$LATEST_TAG"
+          '''
         }
       }
     }
 
-    stage('Tag & Push') {
-      steps {
-        configFileProvider([configFile(fileId: 'deploy-convert-file-env', targetLocation: 'deploy.env')]) {
-          sh '''#!/usr/bin/env bash
-set -Eeuo pipefail
-set -a; . deploy.env; set +a
-docker tag "$IMAGE_NAME:$TAG" "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
-docker tag "$IMAGE_NAME:$TAG" "$REGISTRY_HOST/$IMAGE_NAME:$LATEST_TAG"
-docker push "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
-docker push "$REGISTRY_HOST/$IMAGE_NAME:$LATEST_TAG"
-'''
-        }
-      }
-    }
 
     stage('Deploy (SSH to remote)') {
       steps {
         sshagent(credentials: ['ssh-remote-dev']) {
-        sh '''#!/usr/bin/env bash
-                set -Eeuo pipefail
-                set -a; . deploy.env; set +a
-
-                ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" bash <<'REMOTE'
-
-                docker compose pull
-                docker compose -f /home/ubuntu/app/file-convert/docker-compose.prod.yml up -d
-                docker compose ps
-                REMOTE
-                '''
-          }
+          sh '''#!/usr/bin/env bash
+          scp -o StrictHostKeyChecking=no deploy.sh ubuntu@192.168.1.100:/tmp/deploy.sh
+          ssh -o StrictHostKeyChecking=no ubuntu@192.168.1.100 "bash /tmp/deploy.sh"
+          '''
+        }
       }
     }
+
   } 
 
   post {
