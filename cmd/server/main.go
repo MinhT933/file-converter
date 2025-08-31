@@ -10,12 +10,12 @@ import (
 	"github.com/MinhT933/file-converter/internal/config"
 	"github.com/MinhT933/file-converter/internal/infra/auth"
 	"github.com/MinhT933/file-converter/internal/infra/firebase"
+	"github.com/MinhT933/file-converter/internal/repositories"
+	"github.com/MinhT933/file-converter/internal/services"
 	fiberSwagger "github.com/arsmn/fiber-swagger/v2"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/hibiken/asynq"
-	"github.com/MinhT933/file-converter/internal/repositories"
-	"github.com/MinhT933/file-converter/internal/services"
 )
 
 // @title           File Converter API
@@ -56,6 +56,10 @@ func main() {
 
 	app := fiber.New(fiber.Config{
 		BodyLimit: cfg.MaxUploadMB * 1024 * 1024,
+	})
+
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
 	})
 
 	//thêm
