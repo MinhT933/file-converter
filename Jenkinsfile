@@ -13,6 +13,26 @@ pipeline {
         DISCORD_WEBHOOK_URL = credentials("DISCORD_WEBHOOK_URL")
     }
 
+    stage {
+        stage('start Pipeline'){
+            steps {
+                discordSend(
+                        webhookURL: env.DISCORD_WEBHOOK_URL,
+                        description: """
+                        **Job:** ${env.JOB_NAME}
+                        **Build:** #${env.BUILD_NUMBER}
+                        **Branch:** ${env.BRANCH_NAME}
+                        **Commit:** `${env.GIT_COMMIT_HASH}`
+                        **Message:** ${env.GIT_COMMIT_MESSAGE}
+                        [View Build](${env.BUILD_URL})
+                        """,
+                        title: "🚀 Jenkins Pipeline Started!",
+                        footer: "Jenkins CI/CD | Started 🚀"
+                    )
+                }
+        }
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -60,80 +80,46 @@ pipeline {
                 }
             }
         }
-
-stage('Deploy (SSH to remote)') {
+        stage('Deploy (SSH to remote)') {
   steps {
     sshagent(credentials: ['ssh-remote-dev']) {
       configFileProvider([configFile(fileId: 'deploy-convert-file-env', targetLocation: 'deploy.env')]) {
         sh '''#!/usr/bin/env bash
-set -Eeuo pipefail
-set -a; . deploy.env; set +a
+            set -Eeuo pipefail
+            set -a; . deploy.env; set +a
 
-# --- NEW: fallback nếu chưa có APP_PORT/HEALTH_PATH trong deploy.env ---
-APP_PORT="${APP_PORT:-${PORT_HTTP:-8080}}"
-HEALTH_PATH="${HEALTH_PATH:-/healthz}"
-export APP_PORT HEALTH_PATH
+            : "${STACK_DIR:?missing STACK_DIR}"
+            SERVICE="${SERVICE:-app}"
+            HOST_PORT="${HOST_PORT:-8081}"
+            HEALTH_PATH="${HEALTH_PATH:-/healthz}"
+            COMPOSE_FILE_REMOTE="${COMPOSE_FILE_REMOTE:-docker-compose.prod.yml}"
 
-# Chạy script từ xa, TRUYỀN THÊM tham số HEALTH_PATH (đối số thứ 7)
-cat <<'REMOTE' | ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" bash -s -- \
-  "$REGISTRY_HOST" "$IMAGE_NAME" "$TAG" "$APP_NAME" "$HOST_PORT" "$APP_PORT" "$HEALTH_PATH"
-set -Eeuo pipefail
+            ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" bash -s -- \
+            "$STACK_DIR" "$SERVICE" "$HOST_PORT" "$HEALTH_PATH" "$COMPOSE_FILE_REMOTE" <<'REMOTE'
+            set -Eeuo pipefail
+            STACK_DIR="$1"; SERVICE="$2"; HOST_PORT="$3"; HEALTH_PATH="$4"; COMPOSE_FILE="$5"
 
-REGISTRY_HOST="$1"; IMAGE_NAME="$2"; TAG="$3"
-APP_NAME="$4"; HOST_PORT="$5"; APP_PORT="$6"; HEALTH_PATH="$7"
+            cd "$STACK_DIR" || { echo "❌ No such dir: $STACK_DIR"; exit 1; }
+            [ -f "$COMPOSE_FILE" ] || { echo "❌ Missing $COMPOSE_FILE"; ls -l; exit 1; }
+            export COMPOSE_FILE="$COMPOSE_FILE"
 
-REMOTE_ENV_FILE="/opt/apps/${APP_NAME}/.env"
-REMOTE_CREDS_FILE="/opt/secrets/firebase-creds.json"
+            docker compose pull "$SERVICE"
+            docker compose up -d --no-deps "$SERVICE"
+            docker compose ps
 
-echo "[REMOTE] Docker: $(docker --version || true)"
-echo "[REMOTE] Using ENV:   $REMOTE_ENV_FILE"
-echo "[REMOTE] Using CREDS: $REMOTE_CREDS_FILE"
-echo "[REMOTE] Ports: host:$HOST_PORT -> app:$APP_PORT ; health: $HEALTH_PATH"
-
-[ -f "$REMOTE_ENV_FILE" ]   || { echo "❌ Missing $REMOTE_ENV_FILE"; exit 1; }
-[ -f "$REMOTE_CREDS_FILE" ] || { echo "❌ Missing $REMOTE_CREDS_FILE"; exit 1; }
-
-docker pull "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
-
-docker rm -f "$APP_NAME" >/dev/null 2>&1 || true
-
-set -x
-docker run -d --name "$APP_NAME" --restart=always \
-  --add-host=host.docker.internal:host-gateway \
-  -p "$HOST_PORT:$APP_PORT" \
-  --env-file "$REMOTE_ENV_FILE" \
-  --mount type=bind,source="$REMOTE_CREDS_FILE",target="/app/firebase-creds.json",readonly \
-  "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
-set +x
-
-sleep 2
-docker ps --filter "name=$APP_NAME" --format 'table {{.Names}}\t{{.Ports}}\t{{.Status}}'
-
-# --- NEW: Health-check dùng HEALTH_PATH + retry ---
-ok=""
-for i in $(seq 1 30); do
-  code=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${HOST_PORT}${HEALTH_PATH}" || true)
-  if [ "$code" -ge 200 ] && [ "$code" -lt 400 ]; then
-    echo "✅ Health OK ($code)"
-    ok="yes"
-    break
-  fi
-  echo "…waiting app ready ($i/30), last_code=$code"
-  sleep 1
-done
-
-if [ -z "$ok" ]; then
-  echo "❌ Health-check failed. Printing logs..."
-  docker logs --tail 200 "$APP_NAME" || true
-  exit 1
-fi
-
-echo "✅ Deploy OK"
-REMOTE
-'''
+            ok=""; for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${HOST_PORT}${HEALTH_PATH}" || true)
+            [ "$code" -ge 200 ] && [ "$code" -lt 400 ] && { echo "✅ Health OK ($code)"; ok=1; break; }
+            echo "…waiting ($i/30), code=$code"; sleep 1
+            done
+            [ -n "$ok" ] || { echo "❌ Health failed"; docker compose logs --no-color --tail 200 "$SERVICE" || true; exit 1; }
+            REMOTE
+            '''
       }
     }
   }
+}
+
 }
 
     }
