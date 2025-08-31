@@ -62,7 +62,6 @@ func main() {
 		return c.SendStatus(fiber.StatusOK)
 	})
 
-	//thêm
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     "http://127.0.0.1:8080, http://localhost:8080, https://localhost:3000/, http://localhost:3000/",
 		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",

@@ -9,3 +9,5 @@ firebase-creds.json
 bin
 
 myapp-server-dev
+
+.env.*

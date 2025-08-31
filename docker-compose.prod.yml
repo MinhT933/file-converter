@@ -1,0 +1,38 @@
+name: fileconv-app
+
+services:
+  app:
+    image: 100.93.224.46:5001/be-server-convert-file-app-portfolio:latest
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.api-convert-file
+    # Lưu ý: depends_on KHÔNG hoạt động xuyên project, nên app cần tự retry kết nối
+    volumes:
+      - .:/app # dev: 1 mount là đủ, bỏ các mount lẻ để tránh bị “đè”
+      - ./entrypoint.sh:/app/entrypoint.sh
+      - /opt/secrets/firebase-creds.json:/app/firebase-creds.json:ro
+    networks: [shared-net]
+    entrypoint:
+      ["bash", "-c", "chmod +x /app/entrypoint.sh && /app/entrypoint.sh"]
+
+  # worker:
+  #   image: 100.93.224.46:8080/fileconv-app:latest
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     REDIS_ADDR: "redis:6379"
+  #     NATS_URL: "nats://nats:4222"
+  #     DB_HOST: "postgres"
+  #     DB_PORT: "5432"
+  #     DB_USER: "postgres"
+  #     DB_PASSWORD: "123"
+  #     DB_NAME: "file_converter"
+  #   networks: [shared-net]
+  #   volumes:
+  #     - .:/app
+
+networks:
+  shared-net:
+    name: fileconv-net # Compose sẽ tự tạo network này
+    driver: bridge

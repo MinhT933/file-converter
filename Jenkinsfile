@@ -53,7 +53,9 @@ pipeline {
                     set -a; . deploy.env; set +a
 
                     docker tag "$IMAGE_NAME:$TAG" "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
+                    docker tag "$IMAGE_NAME:$TAG" "$REGISTRY_HOST/$IMAGE_NAME:$LATEST_TAG"
                     docker push "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
+                    docker push "$REGISTRY_HOST/$IMAGE_NAME:$LATEST_TAG"
                     '''
                 }
             }
