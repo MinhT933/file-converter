@@ -82,9 +82,9 @@ docker push "$REGISTRY_HOST/$IMAGE_NAME:$LATEST_TAG"
                 set -a; . deploy.env; set +a
 
                 ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" bash <<'REMOTE'
-                cd "$STACK_DIR" || exit 1
+
                 docker compose pull
-                docker compose -f docker-compose.prod.yml up -d
+                docker compose -f /home/ubuntu/app/file-convert/docker-compose.prod.yml up -d
                 docker compose ps
                 REMOTE
                 '''
