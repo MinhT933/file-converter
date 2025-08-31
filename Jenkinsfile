@@ -77,43 +77,21 @@ docker push "$REGISTRY_HOST/$IMAGE_NAME:$LATEST_TAG"
     stage('Deploy (SSH to remote)') {
       steps {
         sshagent(credentials: ['ssh-remote-dev']) {
-          configFileProvider([configFile(fileId: 'deploy-convert-file-env', targetLocation: 'deploy.env')]) {
-            sh '''#!/usr/bin/env bash
-set -Eeuo pipefail
-set -a; . deploy.env; set +a
+        sh '''#!/usr/bin/env bash
+                set -Eeuo pipefail
+                set -a; . deploy.env; set +a
 
-: "${STACK_DIR:?missing STACK_DIR}"
-SERVICE="${SERVICE:-app}"
-HOST_PORT="${HOST_PORT:-8081}"
-HEALTH_PATH="${HEALTH_PATH:-/healthz}"
-COMPOSE_FILE_REMOTE="${COMPOSE_FILE_REMOTE:-docker-compose.prod.yml}"
-
-ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" bash -s -- \
-  "$STACK_DIR" "$SERVICE" "$HOST_PORT" "$HEALTH_PATH" "$COMPOSE_FILE_REMOTE" <<'REMOTE'
-set -Eeuo pipefail
-STACK_DIR="$1"; SERVICE="$2"; HOST_PORT="$3"; HEALTH_PATH="$4"; COMPOSE_FILE="$5"
-
-cd "$STACK_DIR" || { echo "❌ No such dir: $STACK_DIR"; exit 1; }
-[ -f "$COMPOSE_FILE" ] || { echo "❌ Missing $COMPOSE_FILE"; ls -l; exit 1; }
-export COMPOSE_FILE="$COMPOSE_FILE"
-
-docker compose pull "$SERVICE"
-docker compose up -d --no-deps "$SERVICE"
-docker compose ps
-
-ok=""; for i in $(seq 1 30); do
-  code=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${HOST_PORT}${HEALTH_PATH}" || true)
-  [ "$code" -ge 200 ] && [ "$code" -lt 400 ] && { echo "✅ Health OK ($code)"; ok=1; break; }
-  echo "…waiting ($i/30), code=$code"; sleep 1
-done
-[ -n "$ok" ] || { echo "❌ Health failed"; docker compose logs --no-color --tail 200 "$SERVICE" || true; exit 1; }
-REMOTE
-'''
+                ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" bash <<'REMOTE'
+                cd "$STACK_DIR" || exit 1
+                docker compose pull
+                docker compose up -f docker-compose.prod.yml
+                docker compose ps
+                REMOTE
+                '''
           }
-        }
       }
     }
-  }  // end stages
+  } 
 
   post {
     success {
