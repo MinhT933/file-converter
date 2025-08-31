@@ -84,7 +84,7 @@ docker push "$REGISTRY_HOST/$IMAGE_NAME:$LATEST_TAG"
                 ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" bash <<'REMOTE'
                 cd "$STACK_DIR" || exit 1
                 docker compose pull
-                docker compose up -f docker-compose.prod.yml
+                docker compose -f docker-compose.prod.yml up -d
                 docker compose ps
                 REMOTE
                 '''
