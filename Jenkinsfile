@@ -58,6 +58,7 @@ pipeline {
                 }
             }
         }
+
 stage('Deploy (SSH to remote)') {
   steps {
     sshagent(credentials: ['ssh-remote-dev']) {
@@ -66,13 +67,18 @@ stage('Deploy (SSH to remote)') {
 set -Eeuo pipefail
 set -a; . deploy.env; set +a
 
-# Chạy script từ xa
+# --- NEW: fallback nếu chưa có APP_PORT/HEALTH_PATH trong deploy.env ---
+APP_PORT="${APP_PORT:-${PORT_HTTP:-8080}}"
+HEALTH_PATH="${HEALTH_PATH:-/healthz}"
+export APP_PORT HEALTH_PATH
+
+# Chạy script từ xa, TRUYỀN THÊM tham số HEALTH_PATH (đối số thứ 7)
 cat <<'REMOTE' | ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" bash -s -- \
-  "$REGISTRY_HOST" "$IMAGE_NAME" "$TAG" "$APP_NAME" "$HOST_PORT" "$APP_PORT"
+  "$REGISTRY_HOST" "$IMAGE_NAME" "$TAG" "$APP_NAME" "$HOST_PORT" "$APP_PORT" "$HEALTH_PATH"
 set -Eeuo pipefail
 
 REGISTRY_HOST="$1"; IMAGE_NAME="$2"; TAG="$3"
-APP_NAME="$4"; HOST_PORT="$5"; APP_PORT="$6"
+APP_NAME="$4"; HOST_PORT="$5"; APP_PORT="$6"; HEALTH_PATH="$7"
 
 REMOTE_ENV_FILE="/opt/apps/${APP_NAME}/.env"
 REMOTE_CREDS_FILE="/opt/secrets/firebase-creds.json"
@@ -80,19 +86,15 @@ REMOTE_CREDS_FILE="/opt/secrets/firebase-creds.json"
 echo "[REMOTE] Docker: $(docker --version || true)"
 echo "[REMOTE] Using ENV:   $REMOTE_ENV_FILE"
 echo "[REMOTE] Using CREDS: $REMOTE_CREDS_FILE"
+echo "[REMOTE] Ports: host:$HOST_PORT -> app:$APP_PORT ; health: $HEALTH_PATH"
 
-# Kiểm tra đủ file trước khi chạy
 [ -f "$REMOTE_ENV_FILE" ]   || { echo "❌ Missing $REMOTE_ENV_FILE"; exit 1; }
 [ -f "$REMOTE_CREDS_FILE" ] || { echo "❌ Missing $REMOTE_CREDS_FILE"; exit 1; }
 
-# Kéo image mới
 docker pull "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
 
-# Dự phòng rollback: lưu image/container cũ (nếu có)
-OLD_IMG="$(docker inspect -f '{{.Image}}' "$APP_NAME" 2>/dev/null || true)"
 docker rm -f "$APP_NAME" >/dev/null 2>&1 || true
 
-# Run container mới
 set -x
 docker run -d --name "$APP_NAME" --restart=always \
   --add-host=host.docker.internal:host-gateway \
@@ -102,16 +104,26 @@ docker run -d --name "$APP_NAME" --restart=always \
   "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
 set +x
 
-sleep 3
-docker ps --filter "name=$APP_NAME" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+sleep 2
+docker ps --filter "name=$APP_NAME" --format 'table {{.Names}}\t{{.Ports}}\t{{.Status}}'
 
-# (Tuỳ chọn) Health-check đơn giản, /healthz hoặc /ping tuỳ app của bạn
-if command -v curl >/dev/null 2>&1; then
-  curl -fsS "http://127.0.0.1:${HOST_PORT}/healthz" >/dev/null || {
-    echo "❌ Health-check failed. Printing logs..."
-    docker logs --tail 200 "$APP_NAME" || true
-    exit 1
-  }
+# --- NEW: Health-check dùng HEALTH_PATH + retry ---
+ok=""
+for i in $(seq 1 30); do
+  code=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${HOST_PORT}${HEALTH_PATH}" || true)
+  if [ "$code" -ge 200 ] && [ "$code" -lt 400 ]; then
+    echo "✅ Health OK ($code)"
+    ok="yes"
+    break
+  fi
+  echo "…waiting app ready ($i/30), last_code=$code"
+  sleep 1
+done
+
+if [ -z "$ok" ]; then
+  echo "❌ Health-check failed. Printing logs..."
+  docker logs --tail 200 "$APP_NAME" || true
+  exit 1
 fi
 
 echo "✅ Deploy OK"
@@ -121,6 +133,7 @@ REMOTE
     }
   }
 }
+
     }
 
     post {
