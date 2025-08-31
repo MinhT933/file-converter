@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	_ "github.com/MinhT933/file-converter/docs"
@@ -70,6 +71,8 @@ func main() {
 		ExposeHeaders:    "Content-Disposition",
 	}))
 
+	log.Println(fmt.Sprintf("Truy cập Swagger: http://localhost:%s/swagger/index.html", cfg.PortHTTP))
+
 	app.Get("/swagger/*", fiberSwagger.HandlerDefault)
 
 	api.RegisterRoutes(app, cfg, asynqClient, authProvider, authService)
@@ -78,5 +81,4 @@ func main() {
 		panic(err)
 	}
 
-	log.Println("Truy cập Swagger: http://localhost:8080/swagger/index.html")
 }

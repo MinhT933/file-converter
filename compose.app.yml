@@ -12,11 +12,8 @@ services:
     # Lưu ý: depends_on KHÔNG hoạt động xuyên project, nên app cần tự retry kết nối
     volumes:
       - .:/app # dev: 1 mount là đủ, bỏ các mount lẻ để tránh bị “đè”
-      - ./entrypoint.sh:/app/entrypoint.sh
       - ./firebase-creds.json:/app/firebase-creds.json:ro
     networks: [shared-net]
-    entrypoint:
-      ["bash", "-c", "chmod +x /app/entrypoint.sh && /app/entrypoint.sh"]
 
   worker:
     build:
