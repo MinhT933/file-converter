@@ -11,3 +11,5 @@ bin
 myapp-server-dev
 
 .env.*
+
+/data

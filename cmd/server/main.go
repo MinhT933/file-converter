@@ -31,9 +31,9 @@ func main() {
 	ctx := context.Background()
 
 	fb := firebase.NewClient(ctx, cfg.FirebaseCredFile)
-    if fb == nil {
-        log.Fatal("Failed to create Firebase client")
-    }
+	if fb == nil {
+		log.Fatal("Failed to create Firebase client")
+	}
 
 	db, err := config.ConnectDB()
 	if err != nil {
@@ -78,5 +78,5 @@ func main() {
 		panic(err)
 	}
 
-    log.Println("Truy cập Swagger: http://localhost:8080/swagger/index.html")
+	log.Println("Truy cập Swagger: http://localhost:8080/swagger/index.html")
 }

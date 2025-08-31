@@ -34,5 +34,5 @@ services:
 
 networks:
   shared-net:
+    external: true
     name: fileconv-net # Compose sẽ tự tạo network này
-    driver: bridge

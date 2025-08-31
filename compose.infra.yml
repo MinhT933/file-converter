@@ -56,4 +56,5 @@ services:
 
 networks:
   shared-net:
+    external: true
     name: fileconv-net

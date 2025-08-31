@@ -5,25 +5,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.server
-      target: ${TARGET:-dev}
     ports:
-      - "8080:8080"
+      - "8081:8080"
     env_file:
-      - .env
-    environment:
-      DEV_MODE: "true"
-      REDIS_ADDR: "redis:6379"
-      NATS_URL: "nats://nats:4222"
-      DB_HOST: "postgres"
-      DB_PORT: "5432"
-      DB_USER: "postgres"
-      DB_PASSWORD: "123"
-      DB_NAME: "file_converter"
+      - .env.api-convert-file
     # Lưu ý: depends_on KHÔNG hoạt động xuyên project, nên app cần tự retry kết nối
     volumes:
       - .:/app # dev: 1 mount là đủ, bỏ các mount lẻ để tránh bị “đè”
       - ./entrypoint.sh:/app/entrypoint.sh
-      - /opt/secrets/firebase-creds.json:/app/firebase-creds.json:ro
+      - ./firebase-creds.json:/app/firebase-creds.json:ro
     networks: [shared-net]
     entrypoint:
       ["bash", "-c", "chmod +x /app/entrypoint.sh && /app/entrypoint.sh"]
@@ -48,5 +38,5 @@ services:
 
 networks:
   shared-net:
-    name: fileconv-net # Compose sẽ tự tạo network này
-    driver: bridge
+    external: true
+    name: fileconv-net
