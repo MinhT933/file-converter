@@ -4,20 +4,22 @@ set -Eeuo pipefail
 # Hardcode STACK_DIR
 STACK_DIR=/home/ubuntu/app/file-convert
 
-
-echo "==> Current dir before cd:"
-pwd
-
 cd "$STACK_DIR" || { echo "❌ STACK_DIR=$STACK_DIR not found"; exit 1; }
 
-echo "==> Current dir after cd:"
-pwd
+echo "==> Stop old containers..."
+docker compose -f docker-compose.prod.yml down
+
+echo "==> Remove old image..."
+docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep "be-server-convert-file-app-portfolio" | while read repo id; do
+  docker rmi -f "$id" || true
+done
 
 echo "==> Pull latest image..."
-docker compose -f docker-compose.prod.yml pull 
+docker compose -f docker-compose.prod.yml pull
 
-echo "==> Restart service..."
-docker compose -f docker-compose.prod.yml up -d 
+echo "==> Start new containers..."
+docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
 
 echo "==> Current status..."
 docker ps
