@@ -11,7 +11,7 @@ docker compose -f docker-compose.prod.yml down || true
 
 echo "==> Remove old image..."
 docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' \
-  | grep 'be-server-convert-file' \
+  | grep '$IMAGE_NAME' \
   | awk '{print $2}' \
   | xargs -r docker rmi -f || true
 
