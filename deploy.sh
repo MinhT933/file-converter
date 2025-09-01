@@ -7,12 +7,13 @@ STACK_DIR=/home/ubuntu/app/file-convert
 cd "$STACK_DIR" || { echo "❌ STACK_DIR=$STACK_DIR not found"; exit 1; }
 
 echo "==> Stop old containers..."
-docker compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml down || true
 
 echo "==> Remove old image..."
-docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep "be-server-convert-file-app-portfolio" | while read repo id; do
-  docker rmi -f "$id" || true
-done
+docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' \
+  | grep 'be-server-convert-file' \
+  | awk '{print $2}' \
+  | xargs -r docker rmi -f || true
 
 echo "==> Pull latest image..."
 docker compose -f docker-compose.prod.yml pull
