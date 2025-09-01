@@ -6,6 +6,8 @@ pipeline {
     ansiColor('xterm')
   }
 
+  
+
   environment {
     TAG                 = "${env.BRANCH_NAME ?: 'main'}-${env.BUILD_NUMBER}"
     LATEST_TAG          = 'latest'
@@ -78,7 +80,7 @@ pipeline {
         sshagent(credentials: ['ssh-remote-dev']) {
           sh '''#!/usr/bin/env bash
           scp -o StrictHostKeyChecking=no deploy.sh ubuntu@192.168.1.100:/tmp/deploy.sh
-          ssh -o StrictHostKeyChecking=no ubuntu@192.168.1.100 "bash /tmp/deploy.sh"
+          ssh -o StrictHostKeyChecking=no ubuntu@192.168.1.100 "TAG='${TAG}' bash /tmp/deploy.sh"
           '''
         }
       }
