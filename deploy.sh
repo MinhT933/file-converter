@@ -10,7 +10,9 @@ echo "==> Stop old containers..."
 docker compose -f docker-compose.prod.yml down
 
 echo "==> Remove old image..."
-docker compose -f docker-compose.prod.yml down || true
+docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep "be-server-convert-file-app-portfolio" | while read repo id; do
+  docker rmi -f "$id" || true
+done
 
 echo "==> Pull latest image..."
 docker compose -f docker-compose.prod.yml pull
