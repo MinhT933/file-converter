@@ -5,7 +5,6 @@ set -Eeuo pipefail
 STACK_DIR=/home/ubuntu/app/file-convert
 
 cd "$STACK_DIR" || { echo "❌ STACK_DIR=$STACK_DIR not found"; exit 1; }
-: "${IMAGE_NAME_SERVER:?}"; : "${IMAGE_NAME_WORKER:?}"; : "${TAG:?}"
 
 echo "==> Stop old containers..."
 docker compose -f docker-compose.prod.yml down || true
