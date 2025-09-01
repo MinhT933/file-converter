@@ -11,7 +11,7 @@ docker compose -f docker-compose.prod.yml down
 
 echo "==> Remove old image..."
 docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' \
-| awk -v repo="$REPO" -v keep="$TAG" '$1 ~ ("^"repo":") && $1 != (repo":"keep) {print $2}' \
+| awk -v keep="$TAG" '$1 ~ ("^"repo":") && $1 != (repo":"keep) {print $2}' \
 | xargs -r docker rmi -f
 done
 
