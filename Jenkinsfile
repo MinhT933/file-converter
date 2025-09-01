@@ -102,10 +102,14 @@ pipeline {
     stage('Deploy (SSH to remote)') {
       steps {
         sshagent(credentials: ['ssh-remote-dev']) {
-          sh '''#!/usr/bin/env bash
-          scp -o StrictHostKeyChecking=no deploy.sh ubuntu@192.168.1.100:/tmp/deploy.sh
-          ssh -o StrictHostKeyChecking=no ubuntu@192.168.1.100 "TAG='${TAG}' IMAGE_NAME_SERVER='${IMAGE_NAME_SERVER}' IMAGE_NAME_WORKER='${IMAGE_NAME_WORKER}' bash /tmp/deploy.sh"
-          '''
+         configFileProvider([configFile(fileId: 'deploy-convert-file-env', targetLocation: 'deploy.env')]) {
+            sshagent(credentials: ['ssh-remote-dev']) {
+              sh '''#!/usr/bin/env bash
+              scp -o StrictHostKeyChecking=no deploy.sh ubuntu@192.168.1.100:/tmp/deploy.sh
+              ssh -o StrictHostKeyChecking=no ubuntu@192.168.1.100 "TAG='${TAG}' IMAGE_NAME_SERVER='${IMAGE_NAME_SERVER}' IMAGE_NAME_WORKER='${IMAGE_NAME_WORKER}' bash /tmp/deploy.sh"
+              '''
+           }
+          }
         }
       }
     }
