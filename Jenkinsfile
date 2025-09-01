@@ -84,7 +84,7 @@ pipeline {
           echo "==> Build worker image..."
           docker build -f Dockerfile.worker \
             --build-arg APP_NAME="$APP_NAME" \
-            -t "$IMAGE_NAME_WORKER-worker:$TAG" .
+            -t "$IMAGE_NAME_WORKER:$TAG" .
 
           echo "==> Tag & Push worker..."
           docker tag "$IMAGE_NAME_WORKER-worker:$TAG" "$REGISTRY_HOST/$IMAGE_NAME_WORKER-worker:$TAG"
