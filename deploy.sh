@@ -17,11 +17,11 @@ for repo in "192.168.1.100:5001/$IMAGE_NAME_SERVER" "192.168.1.100:5001/$IMAGE_N
   | xargs -r -n1 docker rmi -f || true
 done
 
-echo "==> Pull latest image..."
-docker compose -f docker-compose.prod.yml pull
+echo "==> Update server & worker..."
+docker compose -f docker-compose.prod.yml pull server worker
 
 echo "==> Start new containers..."
-docker compose -f docker-compose.prod.yml up -d --remove-orphans
+docker compose -f docker-compose.prod.yml up -d --no-deps --force-recreate --remove-orphans server worker
 
 
 echo "==> Current status..."
