@@ -87,11 +87,11 @@ pipeline {
             -t "$IMAGE_NAME_WORKER:$TAG" .
 
           echo "==> Tag & Push worker..."
-          docker tag "$IMAGE_NAME_WORKER-worker:$TAG" "$REGISTRY_HOST/$IMAGE_NAME_WORKER-worker:$TAG"
-          docker tag "$IMAGE_NAME_WORKER-worker:$TAG" "$REGISTRY_HOST/$IMAGE_NAME_WORKER-worker:$LATEST_TAG"
+          docker tag "$IMAGE_NAME_WORKER:$TAG" "$REGISTRY_HOST/$IMAGE_NAME_WORKER:$TAG"
+          docker tag "$IMAGE_NAME_WORKER:$TAG" "$REGISTRY_HOST/$IMAGE_NAME_WORKER:$LATEST_TAG"
 
-          docker push "$REGISTRY_HOST/$IMAGE_NAME_WORKER-worker:$TAG"
-          docker push "$REGISTRY_HOST/$IMAGE_NAME_WORKER-worker:$LATEST_TAG"
+          docker push "$REGISTRY_HOST/$IMAGE_NAME_WORKER:$TAG"
+          docker push "$REGISTRY_HOST/$IMAGE_NAME_WORKER:$LATEST_TAG"
           '''
         }
 
