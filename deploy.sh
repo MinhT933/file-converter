@@ -5,15 +5,18 @@ set -Eeuo pipefail
 STACK_DIR=/home/ubuntu/app/file-convert
 
 cd "$STACK_DIR" || { echo "❌ STACK_DIR=$STACK_DIR not found"; exit 1; }
+///
 
 echo "==> Stop old containers..."
 docker compose -f docker-compose.prod.yml down || true
 
 echo "==> Remove old image..."
-docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' \
-  | grep '$IMAGE_NAME' \
-  | awk '{print $2}' \
-  | xargs -r docker rmi -f || true
+for repo in "192.168.1.100:5001/$IMAGE_NAME_SERVER" "192.168.1.100:5001/$IMAGE_NAME_WORKER"; do
+  docker images --format '{{.Repository}}:{{.Tag}}' \
+  | awk -v repo="$repo" -v keep="$TAG" \
+      '$0 ~ ("^"repo":") && $0 != repo":"keep && $0 != repo":latest" {print $0}' \
+  | xargs -r -n1 docker rmi -f || true
+done
 
 echo "==> Pull latest image..."
 docker compose -f docker-compose.prod.yml pull

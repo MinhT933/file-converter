@@ -49,7 +49,7 @@ pipeline {
       }
     }
 
-    stage('Docker Build & Push') {
+    stage('Docker Build & Push Server') {
       steps {
         configFileProvider([configFile(fileId: 'deploy-convert-file-env', targetLocation: 'deploy.env')]) {
           sh '''#!/usr/bin/env bash
@@ -61,16 +61,40 @@ pipeline {
           echo "==> Build image..."
           docker build -f Dockerfile.server \
             --build-arg APP_NAME="$APP_NAME" \
-            -t "$IMAGE_NAME:$TAG" .
+            -t "$IMAGE_NAME_SERVER:$TAG" .
 
           echo "==> Tag & Push..."
-          docker tag "$IMAGE_NAME:$TAG" "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
-          docker tag "$IMAGE_NAME:$TAG" "$REGISTRY_HOST/$IMAGE_NAME:$LATEST_TAG"
+          docker tag "$IMAGE_NAME_SERVER:$TAG" "$REGISTRY_HOST/$IMAGE_NAME_SERVER:$TAG"
+          docker tag "$IMAGE_NAME_SERVER:$TAG" "$REGISTRY_HOST/$IMAGE_NAME_SERVER:$LATEST_TAG"
 
-          docker push "$REGISTRY_HOST/$IMAGE_NAME:$TAG"
-          docker push "$REGISTRY_HOST/$IMAGE_NAME:$LATEST_TAG"
+          docker push "$REGISTRY_HOST/$IMAGE_NAME_SERVER:$TAG"
+          docker push "$REGISTRY_HOST/$IMAGE_NAME_SERVER:$LATEST_TAG"
           '''
         }
+      }
+    }
+
+    stage('Build & Push Worker'){
+      steps{
+          configFileProvider([configFile(fileId: 'deploy-convert-file-env', targetLocation: 'deploy.env')]) {
+          sh '''#!/usr/bin/env bash
+          set -Eeuo pipefail
+          set -a; . deploy.env; set +a
+
+          echo "==> Build worker image..."
+          docker build -f Dockerfile.worker \
+            --build-arg APP_NAME="$APP_NAME" \
+            -t "$IMAGE_NAME_WORKER-worker:$TAG" .
+
+          echo "==> Tag & Push worker..."
+          docker tag "$IMAGE_NAME_WORKER-worker:$TAG" "$REGISTRY_HOST/$IMAGE_NAME_WORKER-worker:$TAG"
+          docker tag "$IMAGE_NAME_WORKER-worker:$TAG" "$REGISTRY_HOST/$IMAGE_NAME_WORKER-worker:$LATEST_TAG"
+
+          docker push "$REGISTRY_HOST/$IMAGE_NAME_WORKER-worker:$TAG"
+          docker push "$REGISTRY_HOST/$IMAGE_NAME_WORKER-worker:$LATEST_TAG"
+          '''
+        }
+
       }
     }
 
@@ -80,7 +104,7 @@ pipeline {
         sshagent(credentials: ['ssh-remote-dev']) {
           sh '''#!/usr/bin/env bash
           scp -o StrictHostKeyChecking=no deploy.sh ubuntu@192.168.1.100:/tmp/deploy.sh
-          ssh -o StrictHostKeyChecking=no ubuntu@192.168.1.100 "TAG='${TAG}' bash /tmp/deploy.sh"
+          ssh -o StrictHostKeyChecking=no ubuntu@192.168.1.100 "TAG='${TAG}' IMAGE_NAME_SERVER='${IMAGE_NAME_SERVER}' IMAGE_NAME_WORKER='${IMAGE_NAME_WORKER}' bash /tmp/deploy.sh"
           '''
         }
       }
