@@ -10,10 +10,7 @@ echo "==> Stop old containers..."
 docker compose -f docker-compose.prod.yml down
 
 echo "==> Remove old image..."
-docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' \
-| awk -v keep="$TAG" '$1 ~ ("^"repo":") && $1 != (repo":"keep) {print $2}' \
-| xargs -r docker rmi -f
-done
+docker compose -f docker-compose.prod.yml down || true
 
 echo "==> Pull latest image..."
 docker compose -f docker-compose.prod.yml pull
