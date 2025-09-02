@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# Hardcode STACK_DIR
 STACK_DIR=/home/ubuntu/app/file-convert
 
 cd "$STACK_DIR" || { echo "❌ STACK_DIR=$STACK_DIR not found"; exit 1; }
