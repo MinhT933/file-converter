@@ -2,11 +2,11 @@ name: fileconv-app
 
 services:
   app:
-    image: 100.93.224.46:5001/be-server-convert-file-app-portfolio:latest
+    image: 100.93.224.46:5001/be-server-convert-file:${TAG}
     ports:
       - "8080:8080"
     env_file:
-      - .env.api-convert-file
+      - .env
     # Lưu ý: depends_on KHÔNG hoạt động xuyên project, nên app cần tự retry kết nối
     volumes:
       - .:/app # dev: 1 mount là đủ, bỏ các mount lẻ để tránh bị “đè”

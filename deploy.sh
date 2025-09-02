@@ -8,6 +8,11 @@ cd "$STACK_DIR" || { echo "❌ STACK_DIR=$STACK_DIR not found"; exit 1; }
 echo "==> Stop old containers..."
 docker compose -f docker-compose.prod.yml down || true
 
+REPOS=(
+  "100.93.224.46:5001/$IMAGE_NAME_SERVER"
+  "100.93.224.46:5001/$IMAGE_NAME_WORKER"
+)
+
 echo "==> Remove old images safely (keep :$TAG & :latest)..."
 for repo in "${REPOS[@]}"; do
   echo "Repo: $repo"
