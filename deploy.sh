@@ -8,35 +8,22 @@ cd "$STACK_DIR" || { echo "❌ STACK_DIR=$STACK_DIR not found"; exit 1; }
 echo "==> Stop old containers..."
 docker compose -f docker-compose.prod.yml down || true
 
-REPOS=(
-  "100.93.224.46:5001/$IMAGE_NAME_SERVER"
-  "100.93.224.46:5001/$IMAGE_NAME_WORKER"
-)
+# Bắt buộc có biến
+: "${TAG:?Missing TAG}"
+: "${IMAGE_NAME_SERVER:?Missing IMAGE_NAME_SERVER}"
+: "${IMAGE_NAME_WORKER:?Missing IMAGE_NAME_WORKER}"
+REGISTRY_HOST="${REGISTRY_HOST:-192.168.1.100:5001}"
 
-echo "==> Remove old images safely (keep :$TAG & :latest)..."
-for repo in "${REPOS[@]}"; do
+echo "==> Remove old images (keep :$TAG & :latest, only these 2 repos)..."
+for repo in "$REGISTRY_HOST/$IMAGE_NAME_SERVER" "$REGISTRY_HOST/$IMAGE_NAME_WORKER"; do
   echo "Repo: $repo"
-
-  # liệt kê đúng repo (không ảnh hưởng repo khác), bỏ tag đang giữ & latest
-  mapfile -t CANDIDATES < <(
-    docker image ls --filter "reference=${repo}:*" --format '{{.Repository}}:{{.Tag}}' \
-    | grep -v -E ":(${TAG}|latest)$"
-  )
-
-  for img in "${CANDIDATES[@]}"; do
-    # skip nếu image đang được container dùng (kể cả stopped)
-    if docker ps -a -q --filter "ancestor=${img}" | grep -q .; then
-      echo "  ⚠️  Skip (in use): $img"
-      continue
-    fi
-
-    if [ "${DRY_RUN:-0}" = "1" ]; then
-      echo "  (dry-run) would delete: $img"
-    else
-      echo "  🗑️  Deleting: $img"
-      docker rmi -f "$img" || true
-    fi
-  done
+  list="$(docker image ls "$repo" --format '{{.Repository}}:{{.Tag}}' \
+          | grep -v -E ":(${TAG}|latest)$" || true)"
+  if [ -n "$list" ]; then
+    echo "$list" | xargs -r -n1 docker rmi -f || true
+  else
+    echo "  Nothing to delete."
+  fi
 done
 
 # dọn layer rác (không ảnh hưởng image đang dùng)
