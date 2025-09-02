@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env bash 
 set -Eeuo pipefail
 
 STACK_DIR=/home/ubuntu/app/file-convert
