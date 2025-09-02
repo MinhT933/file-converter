@@ -6,8 +6,6 @@ pipeline {
     ansiColor('xterm')
   }
 
-  
-
   environment {
     TAG                 = "${env.BRANCH_NAME ?: 'main'}-${env.BUILD_NUMBER}"
     LATEST_TAG          = 'latest'
@@ -74,9 +72,9 @@ pipeline {
       }
     }
 
-    stage('Build & Push Worker'){
-      steps{
-          configFileProvider([configFile(fileId: 'deploy-convert-file-env', targetLocation: 'deploy.env')]) {
+    stage('Build & Push Worker') {
+      steps {
+        configFileProvider([configFile(fileId: 'deploy-convert-file-env', targetLocation: 'deploy.env')]) {
           sh '''#!/usr/bin/env bash
           set -Eeuo pipefail
           set -a; . deploy.env; set +a
@@ -94,24 +92,24 @@ pipeline {
           docker push "$REGISTRY_HOST/$IMAGE_NAME_WORKER:$LATEST_TAG"
           '''
         }
-
       }
     }
-
 
     stage('Deploy (SSH to remote)') {
       steps {
         sshagent(credentials: ['ssh-remote-dev']) {
-         configFileProvider([configFile(fileId: 'deploy-convert-file-env', targetLocation: 'deploy.env')]) {
-              sh '''#!/usr/bin/env bash
-              set -a; . deploy.env; set +a
-              echo "DEBUG Jenkins: TAG=$TAG SERVER=$IMAGE_NAME_SERVER WORKER=$IMAGE_NAME_WORKER"
-              scp -o StrictHostKeyChecking=no deploy.sh ubuntu@192.168.1.100:/tmp/deploy.sh
-              ssh -o StrictHostKeyChecking=no ubuntu@192.168.1.100 "TAG='${TAG}' IMAGE_NAME_SERVER='${IMAGE_NAME_SERVER}' IMAGE_NAME_WORKER='${IMAGE_NAME_WORKER}' bash /tmp/deploy.sh"
-              '''
+          configFileProvider([configFile(fileId: 'deploy-convert-file-env', targetLocation: 'deploy.env')]) {
+            sh '''#!/usr/bin/env bash
+            set -a; . deploy.env; set +a
+            echo "DEBUG Jenkins: TAG=$TAG SERVER=$IMAGE_NAME_SERVER WORKER=$IMAGE_NAME_WORKER"
+            scp -o StrictHostKeyChecking=no deploy.sh ubuntu@192.168.1.100:/tmp/deploy.sh
+            ssh -o StrictHostKeyChecking=no ubuntu@192.168.1.100 "TAG='${TAG}' IMAGE_NAME_SERVER='${IMAGE_NAME_SERVER}' IMAGE_NAME_WORKER='${IMAGE_NAME_WORKER}' bash /tmp/deploy.sh"
+            '''
+          }
         }
       }
     }
+  }
 
   post {
     success {
