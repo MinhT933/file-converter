@@ -109,7 +109,6 @@ pipeline {
               scp -o StrictHostKeyChecking=no deploy.sh ubuntu@192.168.1.100:/tmp/deploy.sh
               ssh -o StrictHostKeyChecking=no ubuntu@192.168.1.100 "TAG='${TAG}' IMAGE_NAME_SERVER='${IMAGE_NAME_SERVER}' IMAGE_NAME_WORKER='${IMAGE_NAME_WORKER}' bash /tmp/deploy.sh"
               '''
-          }
         }
       }
     }
