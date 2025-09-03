@@ -1,75 +1,43 @@
-# syntax=docker/dockerfile:1.6
-
 ############################
 # 1) Builder
 ############################
 FROM golang:1.24-bullseye AS builder
+
 WORKDIR /src
 
-# Cache go modules
 COPY go.mod go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod go mod download
+RUN go mod download
 
-# Copy source
+# Copy toàn bộ source
 COPY . .
 
-# Gen Swagger (nếu bạn dùng)
-RUN go install github.com/swaggo/swag/cmd/swag@latest
-RUN swag init -g cmd/server/main.go --parseInternal --parseDependency
+# Generate swagger ở build-time (chỉnh -g nếu file main khác đường dẫn)
+RUN go install github.com/swaggo/swag/cmd/swag@v1.16.3
+RUN swag init -g cmd/server/main.go -o ./docs
 
-# Build binary ra vị trí cố định (ngoài /app để tránh bind-mount đè)
-RUN --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -o /usr/local/bin/myapp-server ./cmd/server
+# Build binary (static)
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -ldflags="-s -w" -o /app/myapp-server ./cmd/server
 
 ############################
-# 2) Dev (hot-reload bằng Air)
+# 2) Runtime (production)
 ############################
-FROM golang:1.24-bullseye AS dev
-WORKDIR /app
+FROM debian:bullseye-slim AS runtime
 
-# Tools dev
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      bash inotify-tools ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-# Air + Swag cho dev
-RUN go install github.com/air-verse/air@latest \
- && go install github.com/swaggo/swag/cmd/swag@latest
-ENV PATH="/go/bin:${PATH}"
-
-# Pre-download deps để lần đầu nhanh hơn
-COPY go.mod go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod go mod download
-
-# Dev sẽ bind-mount source từ host → chỉ cần chạy Air
-CMD ["air", "-c", ".air.server.toml"]
-
-############################
-# 3) Runtime (production-like)
-############################
-FROM debian:bullseye-slim AS server-runtime
-
-# OS deps (wkhtmltopdf, fonts, X libs, tini để bắt tín hiệu PID1)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates wkhtmltopdf fontconfig fonts-dejavu \
+      ca-certificates \
+      wkhtmltopdf fontconfig fonts-dejavu \
       xvfb libxrender1 libxext6 libjpeg62-turbo openssl tini \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy binary từ builder
-COPY --from=builder /usr/local/bin/myapp-server /usr/local/bin/myapp-server
-
-# Nếu server phục vụ static swagger từ thư mục docs, copy luôn:
+# Chỉ copy những gì cần cho runtime
+COPY --from=builder /app/myapp-server /usr/local/bin/myapp-server
 COPY --from=builder /src/docs /app/docs
 
-# Entrypoint (không COPY .env; dùng env_file trong Compose)
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh && chmod +x /usr/local/bin/entrypoint.sh
-
-EXPOSE 8080
 ENV GIN_MODE=release
+EXPOSE 8080
 
-# tini để xử lý tín hiệu đúng
-ENTRYPOINT ["/usr/bin/tini","--","/usr/local/bin/entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/tini","--"]
+CMD ["/usr/local/bin/myapp-server"]

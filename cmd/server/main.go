@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	_ "github.com/MinhT933/file-converter/docs"
@@ -10,12 +11,12 @@ import (
 	"github.com/MinhT933/file-converter/internal/config"
 	"github.com/MinhT933/file-converter/internal/infra/auth"
 	"github.com/MinhT933/file-converter/internal/infra/firebase"
+	"github.com/MinhT933/file-converter/internal/repositories"
+	"github.com/MinhT933/file-converter/internal/services"
 	fiberSwagger "github.com/arsmn/fiber-swagger/v2"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/hibiken/asynq"
-	"github.com/MinhT933/file-converter/internal/repositories"
-	"github.com/MinhT933/file-converter/internal/services"
 )
 
 // @title           File Converter API
@@ -31,9 +32,9 @@ func main() {
 	ctx := context.Background()
 
 	fb := firebase.NewClient(ctx, cfg.FirebaseCredFile)
-    if fb == nil {
-        log.Fatal("Failed to create Firebase client")
-    }
+	if fb == nil {
+		log.Fatal("Failed to create Firebase client")
+	}
 
 	db, err := config.ConnectDB()
 	if err != nil {
@@ -58,7 +59,13 @@ func main() {
 		BodyLimit: cfg.MaxUploadMB * 1024 * 1024,
 	})
 
-	//thêm
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"message": "Hello, Fiber! Toàn Gà 1234",
+			"status":  "ok",
+		})
+	})
+
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     "http://127.0.0.1:8080, http://localhost:8080, https://localhost:3000/, http://localhost:3000/",
 		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
@@ -66,6 +73,8 @@ func main() {
 		AllowHeaders:     "Content-Type, Authorization",
 		ExposeHeaders:    "Content-Disposition",
 	}))
+
+	log.Println(fmt.Sprintf("Truy cập Swagger: http://localhost:%s/swagger/index.html", cfg.PortHTTP))
 
 	app.Get("/swagger/*", fiberSwagger.HandlerDefault)
 
@@ -75,5 +84,4 @@ func main() {
 		panic(err)
 	}
 
-    log.Println("Truy cập Swagger: http://localhost:8080/swagger/index.html")
 }

@@ -1,0 +1,22 @@
+name: fileconv-app
+
+services:
+  app:
+    image: 100.93.224.46:5001/be-server-convert-file:${TAG}
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    # Lưu ý: depends_on KHÔNG hoạt động xuyên project, nên app cần tự retry kết nối
+    volumes:
+      - .:/app # dev: 1 mount là đủ, bỏ các mount lẻ để tránh bị “đè”
+      - ./entrypoint.sh:/app/entrypoint.sh
+      - /opt/secrets/firebase-creds.json:/app/firebase-creds.json:ro
+    networks: [shared-net]
+    entrypoint:
+      ["bash", "-c", "chmod +x /app/entrypoint.sh && /app/entrypoint.sh"]
+
+networks:
+  shared-net:
+    external: true
+    name: fileconv-net # Compose sẽ tự tạo network này
