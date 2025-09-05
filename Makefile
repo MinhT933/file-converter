@@ -129,6 +129,10 @@ restart-app: ## restart service app
 restart-worker: ## restart service worker
 	docker compose -f $(COMPOSE_APP) restart worker
 
+.PHONY: watch
+watch:
+	air -c .air.toml      
+
 .PHONY: scale-worker
 scale-worker: ## scale worker, ví dụ: make scale-worker N=3
 ifndef N

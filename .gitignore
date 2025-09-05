@@ -13,3 +13,7 @@ myapp-server-dev
 .env.*
 
 /data
+
+/tmp
+
+/docs/*
