@@ -2,14 +2,14 @@
     "swagger": "2.0",
     "info": {
         "description": "Upload \u0026 convert files asynchronously via Asynq queue.",
-        "title": "File Converter API",
+        "title": "File Converter API 121",
         "contact": {
             "name": "Your Name",
             "email": "you@example.com"
         },
-        "version": "1.0"
+        "version": "2.0"
     },
-    "host": "localhost:8080",
+    "host": "localhost:8081",
     "basePath": "/api",
     "paths": {}
 }

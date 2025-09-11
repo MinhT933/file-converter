@@ -19,13 +19,13 @@ import (
 	"github.com/hibiken/asynq"
 )
 
-// @title           File Converter API
-// @version         1.0
+// @title           File Converter API 123
+// @version         6.0
 // @description     Upload & convert files asynchronously via Asynq queue.
-// @contact.name    minht
+// @contact.name    minht bao
 // @contact.email   phammanhtoanhht933@gmail.com
-// @host      localhost:8080
-// @schemes   https
+// @host      localhost:8081
+// @schemes   http
 // @BasePath  /api
 func main() {
 	cfg := config.Load()
@@ -67,7 +67,7 @@ func main() {
 	})
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://127.0.0.1:8080, http://localhost:8080, https://localhost:3000/, http://localhost:3000/",
+		AllowOrigins:     "http://127.0.0.1:8081, http://localhost:8081, https://localhost:3000/, http://localhost:3000/",
 		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
 		AllowCredentials: true,
 		AllowHeaders:     "Content-Type, Authorization",
