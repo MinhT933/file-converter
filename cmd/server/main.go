@@ -28,43 +28,34 @@ import (
 // @schemes   http
 // @BasePath  /api
 func main() {
-	cfg := config.Load()
-	ctx := context.Background()
+	app := fiber.New()
+	
+	// cfg := config.Load()
+	// ctx := context.Background()
 
-	fb := firebase.NewClient(ctx, cfg.FirebaseCredFile)
-	if fb == nil {
-		log.Fatal("Failed to create Firebase client")
-	}
+	// fb := firebase.NewClient(ctx, cfg.FirebaseCredFile)
+	// if fb == nil {
+	// 	log.Fatal("Failed to create Firebase client")
+	// }
 
-	db, err := config.ConnectDB()
-	if err != nil {
-		log.Fatalf("💥 Failed to connect to database: %v", err)
-	}
-	defer db.Close()
+	// db, err := config.ConnectDB()
+	// if err != nil {
+	// 	log.Fatalf("💥 Failed to connect to database: %v", err)
+	// }
+	// defer db.Close()
 
-	userRepo := repositories.NewUserRepository(db)
-	authService := services.NewAuthService(userRepo)
+	// userRepo := repositories.NewUserRepository(db)
+	// authService := services.NewAuthService(userRepo)
 
-	authProvider := auth.NewFirebaseProvider(fb.Auth)
+	// authProvider := auth.NewFirebaseProvider(fb.Auth)
 
-	// Asynq client
-	asynqClient := asynq.NewClient(asynq.RedisClientOpt{
-		Addr:     cfg.RedisAddr,
-		Password: cfg.RedisPass,
-	})
+	// // Asynq client
+	// asynqClient := asynq.NewClient(asynq.RedisClientOpt{
+	// 	Addr:     cfg.RedisAddr,
+	// 	Password: cfg.RedisPass,
+	// })
 
-	defer asynqClient.Close()
-
-	app := fiber.New(fiber.Config{
-		BodyLimit: cfg.MaxUploadMB * 1024 * 1024,
-	})
-
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Hello, Fiber! Toàn Gà 1234",
-			"status":  "ok",
-		})
-	})
+	// defer asynqClient.Close()
 
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     "http://127.0.0.1:8081, http://localhost:8081, https://localhost:3000/, http://localhost:3000/",
@@ -78,10 +69,11 @@ func main() {
 
 	app.Get("/swagger/*", fiberSwagger.HandlerDefault)
 
-	api.RegisterRoutes(app, cfg, asynqClient, authProvider, authService)
+	// api.RegisterRoutes(app, cfg, asynqClient, authProvider, authService)
+
+	api.RegisterRoutes(app)
 
 	if err := app.Listen(":" + cfg.PortHTTP); err != nil {
 		panic(err)
 	}
-
 }
