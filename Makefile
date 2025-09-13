@@ -131,7 +131,10 @@ restart-worker: ## restart service worker
 
 .PHONY: watch
 watch:
-	air -c .air.toml      
+	air -c .air.toml 
+
+.PHONY: build-server
+	go build -o ./bin/server ./cmd/server/main.go     
 
 .PHONY: scale-worker
 scale-worker: ## scale worker, ví dụ: make scale-worker N=3
