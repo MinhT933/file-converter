@@ -6,18 +6,23 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-# Lệnh build: luôn generate swagger trước rồi build server
-cmd = "swag init -g cmd/server/main.go --parseDependency --parseInternal && go build -o ./tmp/server ./cmd/server"
-bin = "tmp/server"
-full_bin = "./tmp/server"
+# Lệnh build: chỉ build server, không generate swagger trong vòng lặp
+cmd = "go build -o ./tmp/main.exe ./cmd/server"
+bin = "tmp/main.exe"
+kill_delay = "500ms"
+
+[proc]
+kill_cmd = "taskkill /F /IM main.exe"
 
 # extensions được watch
 include_ext = ["go", "tpl", "tmpl", "html", "yaml", "yml", "json"]
 # thư mục bỏ qua
-exclude_dir = ["assets", "docs", "tmp", "vendor"]
+exclude_dir = ["assets", "docs", "tmp", "vendor", ".git", "bin"]
+# files to exclude
+exclude_file = ["docs/docs.go", "docs/swagger.json", "docs/swagger.yaml", "cmd/server/main.go"]
 
 # delay reload (ms)
-delay = 1000
+delay = 3000
 
 [log]
 # log kèm timestamp
