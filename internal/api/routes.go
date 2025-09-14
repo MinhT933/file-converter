@@ -16,7 +16,7 @@ func RegisterRoutes(app *fiber.App, cfg *config.Config, client *asynq.Client, au
 	// v1.Get("/status/:job_id", h.Status)
 
 	v1.Post("/convert/html_pdf", h.ConvertHTMLPDF)
-	v1.Post("/auth/social/login", h.SocialLogin)
+	// v1.Post("/auth/social/login", h.SocialLogin)
 
 }
 

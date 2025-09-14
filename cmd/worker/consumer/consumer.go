@@ -1,8 +1,8 @@
-
-
+package consumer
 
 import (
-	"github.com/nats-io/nats.go"
+	"context"
+
 	"github.com/nats-io/nats.go/jetstream"
 )
 

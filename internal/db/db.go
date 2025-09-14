@@ -1,16 +1,18 @@
-package config
+package db
 
 import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"time"
 
-	_ "github.com/lib/pq" // PostgreSQL driver
+	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/lib/pq"
 )
 
-type DBconfig struct {
+type DatabaseConfig struct {
 	Host     string `json:"host"`
 	Port     int    `json:"port"`
 	User     string `json:"user"`
@@ -20,13 +22,23 @@ type DBconfig struct {
 	MaxOpen  int    `json:"maxopen"`
 }
 
-func LoadDB() *DBconfig {
+var Pool *pgxpool.Pool
+
+// getEnv đọc biến môi trường, nếu không có thì trả về fallback
+func getEnv(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
+
+func LoadDatabase() *DatabaseConfig {
 	atoi := func(key, def string) int {
 		n, _ := strconv.Atoi(getEnv(key, def))
 		return n
 	}
 
-	return &DBconfig{
+	return &DatabaseConfig{
 		Host:     getEnv("DB_HOST", "localhost"),
 		Port:     atoi("DB_PORT", "5432"),
 		User:     getEnv("DB_USER", "postgres"),
@@ -38,7 +50,7 @@ func LoadDB() *DBconfig {
 }
 
 // TestConnection - Test database connection and return *sql.DB
-func (c *DBconfig) TestConnection() (*sql.DB, error) {
+func (c *DatabaseConfig) TestConnection() (*sql.DB, error) {
 	// Build connection string
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		c.Host, c.Port, c.User, c.Password, c.Name)
@@ -70,7 +82,7 @@ func (c *DBconfig) TestConnection() (*sql.DB, error) {
 
 // ConnectDB - Load config and establish database connection
 func ConnectDB() (*sql.DB, error) {
-	config := LoadDB()
+	config := LoadDatabase()
 
 	log.Printf("🔄 Connecting to database %s:%d/%s...",
 		config.Host, config.Port, config.Name)
