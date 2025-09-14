@@ -8,11 +8,22 @@ services:
 
   nats:
     image: nats:2
+    command: ["-js"]
     ports:
       - "4222:4222"
       - "8222:8222"
     networks:
       - mynetwork
+
+  nats-nui:
+    image: ghcr.io/nats-nui/nui:latest
+    container_name: nats-nui
+    ports:
+      - "31311:31311"
+    networks:
+      - mynetwork
+    depends_on:
+      - nats
 
   pgadmin:
     image: dpage/pgadmin4
