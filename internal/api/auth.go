@@ -104,7 +104,7 @@ func (h *Handler) SocialLogin(c *fiber.Ctx) error {
 	case "facebook":
 		return h.handleFacebookLogin(c, req)
 	// case "linkedin":
-	// 	return h.handleLinkedInLogin(c, req)
+	//  return h.handleLinkedInLogin(c, req)
 	default:
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error":     "Unsupported provider",
@@ -119,37 +119,37 @@ func (h *Handler) SocialLogin(c *fiber.Ctx) error {
 // @Tags        auth
 // @Accept      json
 // @Param       token query string true "JWT token"
-// @Success     200 {object} auth.User
+// @Success     200 {object} LoginResponse
 // @Failure     400 {object} map[string]string
 // @Failure     401 {object} map[string]string
 // @Router      /auth/verify [get]
-func (h *Handler) VerifyToken(c *fiber.Ctx) error {
-	authHeader := c.Get("Authorization")
-	if authHeader == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Authorization header required",
-		})
-	}
+// func (h *Handler) VerifyToken(c *fiber.Ctx) error {
+// 	authHeader := c.Get("Authorization")
+// 	if authHeader == "" {
+// 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+// 			"error": "Authorization header required",
+// 		})
+// 	}
 
-	token := strings.TrimPrefix(authHeader, "Bearer ")
-	if token == authHeader {
-		token = authHeader // Fallback nếu không có "Bearer "
-	}
+// 	token := strings.TrimPrefix(authHeader, "Bearer ")
+// 	if token == authHeader {
+// 		token = authHeader // Fallback nếu không có "Bearer "
+// 	}
 
-	// Verify token với Auth Provider
-	user, err := h.AuthProvider.VerifyToken(c.Context(), token)
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Invalid or expired token",
-		})
-	}
+// 	// Verify token với Auth Provider
+// 	user, err := h.AuthProvider.VerifyToken(c.Context(), token)
+// 	if err != nil {
+// 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+// 			"error": "Invalid or expired token",
+// 		})
+// 	}
 
-	return c.JSON(AuthUser{
-		UID:   user.UID,
-		Email: user.Email,
-		Name:  user.DisplayName,
-	})
-}
+// 	return c.JSON(AuthUser{
+// 		UID:   user.UID,
+// 		Email: user.Email,
+// 		Name:  user.DisplayName,
+// 	})
+// }
 
 func (h *Handler) handleGoogleLogin(c *fiber.Ctx, req SocialLoginRequest) error {
 	// Xử lý đăng nhập với Google

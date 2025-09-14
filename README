@@ -245,3 +245,7 @@ Created by **[MinhT933](https://github.com/MinhT933)** — contributions welcome
 ## 📝 License
 
 MIT — see `LICENSE`.
+
+note
+swag init -g cmd/server/main.go --parseInternal
+go run cmd/server/main.go
