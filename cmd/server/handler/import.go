@@ -34,7 +34,7 @@ func NewImportHandler(db *sql.DB, js jetstream.JetStream, log *zap.Logger) *Impo
 // @Produce json
 // @Param file formData file true "CSV file"
 // @Success 200 {object} map[string]string
-// @Router /api/import/upload [post]
+// @Router /import/upload [post]
 func (h *ImportHandler) Upload(c *fiber.Ctx) error {
 	file, err := c.FormFile("file")
 	if err != nil {

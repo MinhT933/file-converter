@@ -9,8 +9,11 @@ import (
 )
 
 func RegisterRoutes(app *fiber.App, js jetstream.JetStream, log *zap.Logger) {
-	grHealth := app.Group("health")
-	grImport := app.Group("import")
+	// Create API group with /api prefix
+	api := app.Group("/api")
+	
+	grHealth := api.Group("/health")
+	grImport := api.Group("/import")
 
 	// check health
 	grHealth.Get("/ping", handlers.PingHandler)
