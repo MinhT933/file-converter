@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strconv"
 
 	contants "github.com/MinhT933/file-converter/internal/contants"
@@ -42,12 +43,18 @@ func (h *ImportHandler) Upload(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid file")
 	}
 
-	savePath := fmt.Sprintf("./%s/%s", contants.ImportFilePath, file.Filename)
+	// Ensure upload directory exists and create an absolute path for the saved file
+	relPath := filepath.Join(contants.ImportFilePath, file.Filename)
+	absPath, _ := filepath.Abs(relPath)
+	savePath := absPath
+	fmt.Printf("Save file to: %s\n", savePath)
+
 	if err := c.SaveFile(file, savePath); err != nil {
 		h.Log.Error("failed to save file", zap.Error(err))
 		return fiber.NewError(fiber.StatusInternalServerError, "cannot save file")
 	}
 
+	// publish absolute path so worker can open it reliably
 	payload := map[string]string{"path": savePath}
 	res, err := json.Marshal(payload)
 	if err != nil {
