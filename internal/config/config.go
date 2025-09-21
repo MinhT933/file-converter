@@ -94,6 +94,9 @@ func LoadConfigWorker() ConfigWorker {
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
+	// Provide a sensible default so worker doesn't crash when env is missing
+	viper.SetDefault("app.workerType", "excel")
+
 	// Bind env cụ thể (nếu muốn rõ ràng)
 	_ = viper.BindEnv("nats.url", "NATS_URL")
 	_ = viper.BindEnv("nats.stream", "NATS_STREAM")
@@ -105,6 +108,12 @@ func LoadConfigWorker() ConfigWorker {
 
 	if err := viper.Unmarshal(&cfg); err != nil {
 		log.Fatalf("Error unmarshalling config: %v", err)
+	}
+
+	// Warn if caller intentionally left WORKER_TYPE empty
+	if cfg.App.WorkerType == "" {
+		log.Printf("⚠️  WORKER_TYPE not set; using default 'excel'")
+		cfg.App.WorkerType = viper.GetString("app.workerType")
 	}
 	return cfg
 }

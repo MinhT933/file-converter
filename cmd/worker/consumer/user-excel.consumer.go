@@ -3,6 +3,7 @@ package consumer
 import (
 	"context"
 	"encoding/json"
+	"os"
 
 	"github.com/MinhT933/file-converter/cmd/worker/jobs"
 	"github.com/MinhT933/file-converter/internal/contextx"
@@ -41,8 +42,26 @@ func (excel UserExcelConsumer) Parse(data []byte) (ExcelPayload, error) {
 func (excel UserExcelConsumer) Handle(ctx context.Context, payload ExcelPayload) error {
 	log := contextx.Logger(ctx)
 
+	// Defensive checks: ensure path is provided and file exists
+	if payload.Path == "" {
+		log.Error("empty path in payload")
+		return nil
+	}
+
+	// Normalize path: remove any leading ./ and use as-is for worker
+	// (worker runs on same filesystem as server in this setup)
+	cleanPath := payload.Path
+	if len(cleanPath) >= 2 && cleanPath[:2] == "./" {
+		cleanPath = cleanPath[2:]
+	}
+
+	if _, err := os.Stat(cleanPath); err != nil {
+		log.Error("file not found for import", zap.String("path", cleanPath), zap.Error(err))
+		return nil
+	}
+
 	job := jobs.ExcelUserJob{}
-	results := template.RunImportWorkflow(ctx, job, payload.Path, 500)
+	results := template.RunImportWorkflow(ctx, job, cleanPath, 500)
 
 	for res := range results {
 		// Process the Excel file located at payload.Path
