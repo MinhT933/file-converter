@@ -6,6 +6,7 @@ import (
 
 	"github.com/MinhT933/file-converter/cmd/worker/consumer"
 	"github.com/MinhT933/file-converter/internal/config"
+	"github.com/MinhT933/file-converter/internal/contants"
 	"github.com/MinhT933/file-converter/internal/contextx"
 	"github.com/MinhT933/file-converter/internal/db"
 	"github.com/MinhT933/file-converter/internal/nats"
@@ -23,7 +24,7 @@ func main() {
 	ctx := contextx.WithLogger(context.Background(), logger.L())
 	log := contextx.Logger(ctx)
 
-	stream := "import"
+	stream := contants.StreamImport
 
 	nc := nats.Connect(cfg.Nats.URL)
 	js := nats.NewJetStream(nc)
