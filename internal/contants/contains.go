@@ -1,4 +1,4 @@
-package contains
+package contants
 
 const (
 	// Define your constants here
