@@ -26,6 +26,7 @@ type (
 		FirebaseCredFile string
 		FirebaseCredJSON string
 		Env         string
+		CORSOrigins string
 		Nats        struct {
 			URL string
 		}
@@ -83,6 +84,7 @@ func Load() *Config {
 		FirebaseCredFile: getEnv("FIREBASE_CRED_FILE", ""),
 		FirebaseCredJSON: getEnv("FIREBASE_CRED_JSON", ""),
 		Env:         getEnv("ENV", "dev"),
+		CORSOrigins: getEnv("CORS_ORIGINS", "http://127.0.0.1:8081,http://localhost:8081,https://localhost:3000,http://localhost:3000,https://api-convert-file.minht.io.vn"),
 		Nats:        struct{URL string}{URL: getEnv("NATS_URL", "nats://localhost:4222")},
 	}
 }
