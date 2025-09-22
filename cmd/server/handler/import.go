@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 
@@ -48,6 +49,11 @@ func (h *ImportHandler) Upload(c *fiber.Ctx) error {
 	absPath, _ := filepath.Abs(relPath)
 	savePath := absPath
 	fmt.Printf("Save file to: %s\n", savePath)
+
+	if err := os.Mkdir(filepath.Dir(savePath), os.ModePerm); err != nil {
+		h.Log.Error("failed to create directory", zap.Error(err))
+		return fiber.NewError(fiber.StatusInternalServerError, "cannot create directory")
+	}
 
 	if err := c.SaveFile(file, savePath); err != nil {
 		h.Log.Error("failed to save file", zap.Error(err))
