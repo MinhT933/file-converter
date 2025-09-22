@@ -50,7 +50,7 @@ func (h *ImportHandler) Upload(c *fiber.Ctx) error {
 	savePath := absPath
 	fmt.Printf("Save file to: %s\n", savePath)
 
-	if err := os.Mkdir(filepath.Dir(savePath), os.ModePerm); err != nil {
+	if err := os.MkdirAll(filepath.Dir(savePath), os.ModePerm); err != nil {
 		h.Log.Error("failed to create directory", zap.Error(err))
 		return fiber.NewError(fiber.StatusInternalServerError, "cannot create directory")
 	}
